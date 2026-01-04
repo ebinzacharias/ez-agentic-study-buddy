@@ -46,3 +46,7 @@ dmypy.json
 
 uv.lock
 
+.python-version
+.ruff_cache/
+.pre-commit/
+
