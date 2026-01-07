@@ -25,9 +25,14 @@ graph TB
     
     LLM[LLM Client<br/>Groq/OpenAI]
     State[State Manager<br/>StudySessionState<br/>ConceptProgress]
+    ToolExec[ToolExecutor<br/>Tool Binding & Execution]
+    Tools[Tools<br/>Planner ✅, Teacher ✅]
     
     Agent --> LLM
     Agent --> State
+    Agent --> ToolExec
+    ToolExec --> Tools
+    ToolExec --> State
     
     style Agent fill:#e1f5ff
     style ReAct fill:#fff4e1
@@ -59,6 +64,8 @@ flowchart LR
 - **StudyBuddyAgent**: Main orchestrator managing the ReAct loop
 - **LLM Client**: Interface to language models (Groq default, OpenAI optional)
 - **State Manager**: Tracks session progress using Pydantic models
+- **ToolExecutor**: Manages tool binding, execution, and automatic state updates
+- **Tools**: Planner (creates learning paths), Teacher (generates explanations)
 
 For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -100,7 +107,11 @@ result = agent.step()
 agent/
 ├── core/
 │   ├── agent.py          # StudyBuddyAgent class
-│   └── state.py          # State models
+│   ├── state.py          # State models
+│   └── tool_executor.py  # Tool execution and state updates
+├── tools/
+│   ├── planner_tool.py   # Learning path planning
+│   └── teacher_tool.py   # Concept teaching
 └── utils/
     └── llm_client.py     # LLM initialization
 ```
