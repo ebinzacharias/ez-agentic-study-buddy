@@ -20,19 +20,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ReAct pattern structure (observe, decide, act)
   - State and LLM integration
   - Basic agent methods and initialization
-- Test script for LLM connection verification
+- Planner Tool (`plan_learning_path`)
+  - LangChain `@tool` decorator implementation
+  - Breaks down topics into ordered learning concepts
+  - Returns structured concept list with difficulty and order
+- Teacher Tool (`teach_concept`)
+  - Generates explanations at appropriate difficulty levels
+  - Adapts vocabulary, examples, and depth based on difficulty
+  - Returns structured teaching content with introduction, explanation, examples, and takeaways
+- ToolExecutor (`agent/core/tool_executor.py`)
+  - Tool binding to LLM using `llm.bind_tools()`
+  - Tool call extraction from LLM responses
+  - Manual tool execution and ToolMessage creation
+  - Automatic state updates after tool execution
+  - Integrates with StudySessionState for progress tracking
+- State Update Integration
+  - Automatic state updates after planning (adds concepts to state)
+  - Automatic state updates after teaching (marks concepts as taught)
+  - State persistence across tool calls
+- Test scripts
+  - LLM connection verification (`test_llm.py`)
+  - Planner tool testing (`test_planner.py`)
+  - Manual tool calling demonstration (`test_manual_tool_calling.py`)
+  - Teacher tool testing (`test_teacher.py`)
+  - State updates testing (`test_state_updates.py`)
+- GitHub Actions CI workflow
+  - Runs on PRs to main and pushes to main/develop
+  - Validates imports and Python syntax
+  - Uses uv for dependency management
 - Architecture documentation with Mermaid diagrams
-  - System overview diagram
-  - Component architecture diagram
+  - System overview diagram (updated with ToolExecutor)
+  - Component architecture diagram (updated with tools)
   - ReAct pattern flow diagram
-  - Future tool integration diagram
-  - Data flow sequence diagram
+  - Tool integration diagram (updated with current status)
+  - Data flow sequence diagram (updated with ToolExecutor)
 - Learning documentation for each completed step
+  - Step 1: State Management
+  - Step 2: LLM Client Setup
+  - Step 3: Core Agent Skeleton
+  - Step 4: Planner Tool
+  - Step 5: Manual Tool Calling
+  - Step 6: Teacher Tool
+  - Step 7: State Updates
 - Project setup
   - MIT License
   - `.gitignore` for Python projects
   - `pyproject.toml` with dependencies
   - `.env.example` template
+  - `ARCHITECTURE.md` with comprehensive diagrams
+  - `CHANGELOG.md` for version tracking
 
 ## [0.1.0] - 2026-01-XX
 
