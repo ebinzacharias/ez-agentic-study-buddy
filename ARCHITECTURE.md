@@ -12,14 +12,21 @@ graph TB
     
     LLM[LLM Client<br/>Groq/OpenAI]
     State[State Manager<br/>StudySessionState<br/>ConceptProgress]
+    ToolExec[ToolExecutor<br/>Tool Binding & Execution]
+    Tools[Tools<br/>Planner, Teacher, Quizzer, Evaluator]
     
     Agent --> LLM
     Agent --> State
+    Agent --> ToolExec
+    ToolExec --> LLM
+    ToolExec --> Tools
     
     style Agent fill:#e1f5ff
     style ReAct fill:#fff4e1
     style LLM fill:#e8f5e9
     style State fill:#f3e5f5
+    style ToolExec fill:#fff9c4
+    style Tools fill:#fce4ec
 ```
 
 ## Component Architecture
@@ -67,8 +74,25 @@ classDiagram
         +get_llm_client() ChatGroq | ChatOpenAI
     }
     
+    class ToolExecutor {
+        -llm: ChatGroq | ChatOpenAI
+        -tools: List[BaseTool]
+        -tool_map: Dict[str, BaseTool]
+        -llm_with_tools: LLM
+        +extract_tool_calls(response) List[Dict]
+        +execute_tool(name, args, call_id) ToolMessage
+        +execute_tool_calls(tool_calls) List[ToolMessage]
+    }
+    
+    class PlannerTool {
+        +plan_learning_path(topic, difficulty_level, max_concepts) List[dict]
+    }
+    
     StudyBuddyAgent --> StudySessionState : uses
+    StudyBuddyAgent --> ToolExecutor : uses
     StudyBuddyAgent --> LLMClient : uses
+    ToolExecutor --> LLMClient : uses
+    ToolExecutor --> PlannerTool : executes
     StudySessionState --> ConceptProgress : contains many
 ```
 
@@ -96,6 +120,22 @@ classDiagram
 - **Role**: Language model interface
 - **Supports**: Groq (default, free) and OpenAI
 - **Configuration**: Environment variables (.env)
+
+#### 4. ToolExecutor (`agent/core/tool_executor.py`)
+- **Role**: Manages tool binding and execution
+- **Responsibilities**:
+  - Binds tools to LLM using `llm.bind_tools()`
+  - Extracts tool calls from LLM responses
+  - Executes tools and creates ToolMessages
+  - Maps tool names to tool instances
+
+#### 5. Tools (`agent/tools/`)
+- **Planner Tool** (`planner_tool.py`): ✅ Implemented
+  - Breaks down topics into ordered learning concepts
+  - Returns structured concept list with difficulty and order
+- **Teacher Tool**: ⏳ Planned
+- **Quizzer Tool**: ⏳ Planned
+- **Evaluator Tool**: ⏳ Planned
 
 ## ReAct Pattern Flow
 
@@ -144,17 +184,19 @@ flowchart LR
     style UpdateState fill:#f3e5f5
 ```
 
-## Future Tool Integration
+## Tool Integration
 
 ```mermaid
 graph TD
-    Agent[StudyBuddyAgent] --> Tools{Tool Selection}
+    Agent[StudyBuddyAgent] --> ToolExec[ToolExecutor]
     
-    Tools -->|Initial Setup| Planner[Planner Tool<br/>Generate Learning Path]
-    Tools -->|Teaching Phase| Teacher[Teacher Tool<br/>Teach Concepts]
-    Tools -->|Assessment Phase| Quizzer[Quizzer Tool<br/>Create Quizzes]
-    Tools -->|Evaluation Phase| Evaluator[Evaluator Tool<br/>Evaluate Responses]
-    Tools -->|Adaptation| Adapter[Adapter Tool<br/>Adjust Difficulty]
+    ToolExec -->|Binds & Executes| Tools{Tool Selection}
+    
+    Tools -->|Initial Setup| Planner[Planner Tool ✅<br/>Generate Learning Path]
+    Tools -->|Teaching Phase| Teacher[Teacher Tool ⏳<br/>Teach Concepts]
+    Tools -->|Assessment Phase| Quizzer[Quizzer Tool ⏳<br/>Create Quizzes]
+    Tools -->|Evaluation Phase| Evaluator[Evaluator Tool ⏳<br/>Evaluate Responses]
+    Tools -->|Adaptation| Adapter[Adapter Tool ⏳<br/>Adjust Difficulty]
     
     Planner --> State
     Teacher --> State
@@ -166,6 +208,7 @@ graph TD
     
     LLM[LLM Client<br/>Powers All Tools]
     
+    ToolExec --> LLM
     Planner --> LLM
     Teacher --> LLM
     Quizzer --> LLM
@@ -173,12 +216,13 @@ graph TD
     Adapter --> LLM
     
     style Agent fill:#e1f5ff
+    style ToolExec fill:#fff9c4
     style Planner fill:#e8f5e9
     style Teacher fill:#fff3e0
     style Quizzer fill:#fce4ec
     style Evaluator fill:#e0f2f1
     style Adapter fill:#f3e5f5
-    style LLM fill:#fff9c4
+    style LLM fill:#e3f2fd
     style State fill:#e8eaf6
 ```
 
@@ -200,14 +244,18 @@ sequenceDiagram
         Agent->>State: OBSERVE: Read State
         State-->>Agent: Current Progress Data
         
-        Agent->>LLM: DECIDE: Analyze State
-        LLM-->>Agent: Recommended Action
-        
-        Agent->>Tools: ACT: Execute Tool
-        Tools->>LLM: Generate Content
-        LLM-->>Tools: Content Response
-        Tools->>State: Update Progress
-        Tools-->>Agent: Action Result
+    Agent->>ToolExec: DECIDE: Use LLM with tools
+    ToolExec->>LLM: Analyze State with Tool Binding
+    LLM-->>ToolExec: Tool Call Decision
+    ToolExec->>ToolExec: Extract Tool Calls
+    
+    Agent->>ToolExec: ACT: Execute Tool Calls
+    ToolExec->>Tools: Execute Tool
+    Tools->>LLM: Generate Content
+    LLM-->>Tools: Content Response
+    Tools->>State: Update Progress
+    Tools-->>ToolExec: Tool Result
+    ToolExec-->>Agent: ToolMessage with Result
         
         Agent->>Agent: Check Completion
         
@@ -222,7 +270,8 @@ sequenceDiagram
 1. **ReAct Pattern**: Reasoning + Acting loop for autonomous decision-making
 2. **State Management**: Centralized state tracking with Pydantic models
 3. **Dependency Injection**: LLM and state can be provided or auto-created
-4. **Tool-Based Architecture**: Extensible tool system (to be implemented)
+4. **Tool-Based Architecture**: Extensible tool system with ToolExecutor managing tool binding and execution
+5. **Manual Tool Calling**: Agent manually extracts and executes tool calls from LLM responses (not using AgentExecutor)
 
 ## Environment Configuration
 
