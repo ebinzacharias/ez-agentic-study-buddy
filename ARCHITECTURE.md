@@ -234,12 +234,4 @@ sequenceDiagram
 └─> (Optional: OPENAI_API_KEY)
 ```
 
-## Current Status
-
-✅ State Management System
-✅ LLM Client Setup
-✅ Core Agent Skeleton
-⏳ Tool Definitions (Planner, Teacher, Quizzer, Evaluator)
-⏳ Decision Logic Implementation
-⏳ Main Agent Loop
 
