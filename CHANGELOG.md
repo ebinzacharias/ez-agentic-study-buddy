@@ -24,14 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LangChain `@tool` decorator implementation
   - Breaks down topics into ordered learning concepts
   - Returns structured concept list with difficulty and order
+- Teacher Tool (`teach_concept`)
+  - Generates explanations at appropriate difficulty levels
+  - Adapts vocabulary, examples, and depth based on difficulty
+  - Returns structured teaching content with introduction, explanation, examples, and takeaways
 - ToolExecutor (`agent/core/tool_executor.py`)
   - Tool binding to LLM using `llm.bind_tools()`
   - Tool call extraction from LLM responses
   - Manual tool execution and ToolMessage creation
+  - Automatic state updates after tool execution
+  - Integrates with StudySessionState for progress tracking
+- State Update Integration
+  - Automatic state updates after planning (adds concepts to state)
+  - Automatic state updates after teaching (marks concepts as taught)
+  - State persistence across tool calls
 - Test scripts
   - LLM connection verification (`test_llm.py`)
   - Planner tool testing (`test_planner.py`)
   - Manual tool calling demonstration (`test_manual_tool_calling.py`)
+  - Teacher tool testing (`test_teacher.py`)
+  - State updates testing (`test_state_updates.py`)
 - GitHub Actions CI workflow
   - Runs on PRs to main and pushes to main/develop
   - Validates imports and Python syntax
@@ -48,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Step 3: Core Agent Skeleton
   - Step 4: Planner Tool
   - Step 5: Manual Tool Calling
+  - Step 6: Teacher Tool
+  - Step 7: State Updates
 - Project setup
   - MIT License
   - `.gitignore` for Python projects

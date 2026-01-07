@@ -76,23 +76,31 @@ classDiagram
     
     class ToolExecutor {
         -llm: ChatGroq | ChatOpenAI
+        -state: StudySessionState
         -tools: List[BaseTool]
         -tool_map: Dict[str, BaseTool]
         -llm_with_tools: LLM
         +extract_tool_calls(response) List[Dict]
         +execute_tool(name, args, call_id) ToolMessage
         +execute_tool_calls(tool_calls) List[ToolMessage]
+        -_update_state_after_tool(name, args, result) None
     }
     
     class PlannerTool {
         +plan_learning_path(topic, difficulty_level, max_concepts) List[dict]
     }
     
+    class TeacherTool {
+        +teach_concept(concept_name, difficulty_level, context) str
+    }
+    
     StudyBuddyAgent --> StudySessionState : uses
     StudyBuddyAgent --> ToolExecutor : uses
     StudyBuddyAgent --> LLMClient : uses
+    ToolExecutor --> StudySessionState : updates
     ToolExecutor --> LLMClient : uses
     ToolExecutor --> PlannerTool : executes
+    ToolExecutor --> TeacherTool : executes
     StudySessionState --> ConceptProgress : contains many
 ```
 
@@ -122,18 +130,25 @@ classDiagram
 - **Configuration**: Environment variables (.env)
 
 #### 4. ToolExecutor (`agent/core/tool_executor.py`)
-- **Role**: Manages tool binding and execution
+- **Role**: Manages tool binding and execution with state integration
 - **Responsibilities**:
   - Binds tools to LLM using `llm.bind_tools()`
   - Extracts tool calls from LLM responses
   - Executes tools and creates ToolMessages
   - Maps tool names to tool instances
+  - Automatically updates state after tool execution
+  - Maintains state consistency across tool calls
 
 #### 5. Tools (`agent/tools/`)
 - **Planner Tool** (`planner_tool.py`): ✅ Implemented
   - Breaks down topics into ordered learning concepts
   - Returns structured concept list with difficulty and order
-- **Teacher Tool**: ⏳ Planned
+  - Updates state: adds concepts to StudySessionState
+- **Teacher Tool** (`teacher_tool.py`): ✅ Implemented
+  - Generates explanations at appropriate difficulty levels
+  - Adapts vocabulary, examples, and depth based on difficulty
+  - Returns structured teaching content
+  - Updates state: marks concepts as taught
 - **Quizzer Tool**: ⏳ Planned
 - **Evaluator Tool**: ⏳ Planned
 
@@ -193,7 +208,7 @@ graph TD
     ToolExec -->|Binds & Executes| Tools{Tool Selection}
     
     Tools -->|Initial Setup| Planner[Planner Tool ✅<br/>Generate Learning Path]
-    Tools -->|Teaching Phase| Teacher[Teacher Tool ⏳<br/>Teach Concepts]
+    Tools -->|Teaching Phase| Teacher[Teacher Tool ✅<br/>Teach Concepts]
     Tools -->|Assessment Phase| Quizzer[Quizzer Tool ⏳<br/>Create Quizzes]
     Tools -->|Evaluation Phase| Evaluator[Evaluator Tool ⏳<br/>Evaluate Responses]
     Tools -->|Adaptation| Adapter[Adapter Tool ⏳<br/>Adjust Difficulty]
@@ -272,6 +287,7 @@ sequenceDiagram
 3. **Dependency Injection**: LLM and state can be provided or auto-created
 4. **Tool-Based Architecture**: Extensible tool system with ToolExecutor managing tool binding and execution
 5. **Manual Tool Calling**: Agent manually extracts and executes tool calls from LLM responses (not using AgentExecutor)
+6. **Automatic State Updates**: ToolExecutor automatically updates state after tool execution, maintaining consistency
 
 ## Environment Configuration
 
