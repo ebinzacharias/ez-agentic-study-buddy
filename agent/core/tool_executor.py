@@ -6,12 +6,13 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from agent.tools.planner_tool import plan_learning_path
+from agent.tools.teacher_tool import teach_concept
 
 
 class ToolExecutor:
     def __init__(self, llm: Union[ChatGroq, ChatOpenAI]):
         self.llm = llm
-        self.tools = [plan_learning_path]
+        self.tools = [plan_learning_path, teach_concept]
         self.tool_map: Dict[str, BaseTool] = {
             tool.name: tool for tool in self.tools
         }
