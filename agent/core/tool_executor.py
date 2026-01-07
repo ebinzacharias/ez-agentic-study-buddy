@@ -1,17 +1,23 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
+from agent.core.state import StudySessionState
 from agent.tools.planner_tool import plan_learning_path
 from agent.tools.teacher_tool import teach_concept
 
 
 class ToolExecutor:
-    def __init__(self, llm: Union[ChatGroq, ChatOpenAI]):
+    def __init__(
+        self,
+        llm: Union[ChatGroq, ChatOpenAI],
+        state: Optional[StudySessionState] = None,
+    ):
         self.llm = llm
+        self.state = state
         self.tools = [plan_learning_path, teach_concept]
         self.tool_map: Dict[str, BaseTool] = {
             tool.name: tool for tool in self.tools
@@ -24,12 +30,52 @@ class ToolExecutor:
             tool_calls = response.tool_calls
         return tool_calls
     
-    def execute_tool(self, tool_name: str, tool_args: Dict[str, Any], tool_call_id: str) -> ToolMessage:
+    def _update_state_after_tool(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        tool_result: Any,
+    ) -> None:
+        if not self.state:
+            return
+        
+        if tool_name == "plan_learning_path":
+            if isinstance(tool_result, list):
+                for concept_data in tool_result:
+                    if isinstance(concept_data, dict):
+                        concept_name = concept_data.get("concept_name")
+                        difficulty_str = concept_data.get("difficulty", "beginner")
+                        if concept_name:
+                            from agent.core.state import DifficultyLevel
+                            difficulty = DifficultyLevel.BEGINNER
+                            if difficulty_str == "intermediate":
+                                difficulty = DifficultyLevel.INTERMEDIATE
+                            elif difficulty_str == "advanced":
+                                difficulty = DifficultyLevel.ADVANCED
+                            self.state.add_concept(concept_name, difficulty)
+                self.state.concepts_planned = [
+                    c.get("concept_name") for c in tool_result
+                    if isinstance(c, dict) and c.get("concept_name")
+                ]
+        
+        elif tool_name == "teach_concept":
+            concept_name = tool_args.get("concept_name")
+            if concept_name and concept_name in self.state.concepts:
+                self.state.mark_concept_taught(concept_name)
+    
+    def execute_tool(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        tool_call_id: str,
+    ) -> ToolMessage:
         if tool_name not in self.tool_map:
             raise ValueError(f"Tool '{tool_name}' not found in tool_map")
         
         tool = self.tool_map[tool_name]
         tool_result = tool.invoke(tool_args)
+        
+        self._update_state_after_tool(tool_name, tool_args, tool_result)
         
         tool_message = ToolMessage(
             content=str(tool_result),
