@@ -26,7 +26,7 @@ graph TB
     LLM[LLM Client<br/>Groq/OpenAI]
     State[State Manager<br/>StudySessionState<br/>ConceptProgress]
     ToolExec[ToolExecutor<br/>Tool Binding & Execution]
-    Tools[Tools<br/>Planner ✅, Teacher ✅]
+    Tools[Tools<br/>Planner ✅, Teacher ✅, Quizzer ✅, Evaluator ✅, Adapter ✅]
     
     Agent --> LLM
     Agent --> State
@@ -61,11 +61,18 @@ flowchart LR
 
 ### Components
 
-- **StudyBuddyAgent**: Main orchestrator managing the ReAct loop
+- **StudyBuddyAgent**: Main orchestrator managing the ReAct loop with LCEL chains
 - **LLM Client**: Interface to language models (Groq default, OpenAI optional)
 - **State Manager**: Tracks session progress using Pydantic models
+- **Decision Rules**: Rule-based decision making for autonomous actions
+- **Retry Manager**: Handles retry logic and alternative teaching strategies
 - **ToolExecutor**: Manages tool binding, execution, and automatic state updates
-- **Tools**: Planner (creates learning paths), Teacher (generates explanations)
+- **Tools**: 
+  - Planner (creates learning paths)
+  - Teacher (generates explanations with retry support)
+  - Quizzer (creates quizzes)
+  - Evaluator (evaluates responses with explicit scoring)
+  - Adapter (adjusts difficulty based on performance)
 
 For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -115,15 +122,23 @@ See [USAGE.md](USAGE.md) for detailed usage guide, examples, and best practices.
 
 ```
 agent/
+├── chains/
+│   └── decision_chain.py    # LCEL chains for ReAct loop
 ├── core/
-│   ├── agent.py          # StudyBuddyAgent class
-│   ├── state.py          # State models
-│   └── tool_executor.py  # Tool execution and state updates
+│   ├── agent.py             # StudyBuddyAgent class
+│   ├── state.py             # State models (StudySessionState, ConceptProgress)
+│   ├── decision_rules.py    # Rule-based decision making
+│   ├── retry_manager.py     # Retry logic and strategies
+│   ├── quiz_workflow.py     # Quiz generation and evaluation workflow
+│   └── tool_executor.py     # Tool execution and state updates
 ├── tools/
-│   ├── planner_tool.py   # Learning path planning
-│   └── teacher_tool.py   # Concept teaching
+│   ├── planner_tool.py      # Learning path planning
+│   ├── teacher_tool.py      # Concept teaching (with retry support)
+│   ├── quizzer_tool.py      # Quiz generation
+│   ├── evaluator_tool.py    # Response evaluation (explicit scoring)
+│   └── adapter_tool.py      # Difficulty adaptation
 └── utils/
-    └── llm_client.py     # LLM initialization
+    └── llm_client.py        # LLM initialization
 ```
 
 ## Documentation
