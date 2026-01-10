@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Decision Rules system with explicit if/then logic for state-driven decisions
+- ReAct loop implementation in StudyBuddyAgent with Observe → Decide → Act pattern
+- Quiz workflow integration connecting quiz generation and evaluation
+- Main agent run loop with completion detection and history tracking
 - State Management System with Pydantic models
   - `ConceptProgress` model for tracking individual concept status
   - `StudySessionState` model for tracking overall session state
