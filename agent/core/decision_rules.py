@@ -1,11 +1,13 @@
 from typing import Any, Dict, List, Optional
 
+from agent.core.retry_manager import RetryManager
 from agent.core.state import ConceptStatus, StudySessionState
 
 
 class DecisionRules:
     def __init__(self, state: StudySessionState):
         self.state = state
+        self.retry_manager = RetryManager(state)
     
     def decide_next_action(self, observation: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if observation is None:
@@ -40,22 +42,56 @@ class DecisionRules:
             retry_concept = concepts_needing_retry[0]
             concept_progress = self.state.get_concept_progress(retry_concept)
             
-            if concept_progress and concept_progress.retry_count >= 3:
+            if not concept_progress:
+                next_concept = self._get_next_untaught_concept()
+                if next_concept:
+                    return {
+                        "action": "set_current_concept",
+                        "concept_name": next_concept,
+                        "reason": f"Skipping invalid retry concept, moving to: {next_concept}",
+                    }
+            
+            if self.retry_manager.should_adapt_difficulty(retry_concept):
                 return {
                     "action": "adapt_difficulty",
                     "concept_name": retry_concept,
-                    "reason": f"Concept {retry_concept} failed 3+ times, adapting difficulty",
+                    "reason": f"Concept {retry_concept} exceeded max retries ({RetryManager.MAX_RETRIES}), adapting difficulty",
                 }
+            
+            if not self.retry_manager.can_retry(retry_concept):
+                concepts_exceeding = self.retry_manager.get_concepts_exceeding_retries()
+                if retry_concept in concepts_exceeding:
+                    return {
+                        "action": "adapt_difficulty",
+                        "concept_name": retry_concept,
+                        "reason": f"Concept {retry_concept} cannot be retried further, adapting difficulty",
+                    }
+            
+            retry_strategy = self.retry_manager.get_retry_strategy(retry_concept)
+            retry_context = self.retry_manager.get_reteaching_context(retry_concept)
+            
+            current_retry_count = concept_progress.retry_count if concept_progress else 0
+            difficulty_level = concept_progress.difficulty_level.value if concept_progress else "beginner"
+            
+            tool_args = {
+                "concept_name": retry_concept,
+                "difficulty_level": difficulty_level,
+                "context": retry_context,
+            }
+            
+            if "error" not in retry_strategy:
+                if retry_strategy.get("retry_count"):
+                    tool_args["retry_attempt"] = retry_strategy.get("retry_count")
+                if retry_strategy.get("strategy"):
+                    tool_args["alternative_strategy"] = retry_strategy.get("strategy")
+            
+            strategy_name = retry_strategy.get("strategy", "standard") if "error" not in retry_strategy else "standard"
             
             return {
                 "action": "teach_concept",
                 "tool_name": "teach_concept",
-                "tool_args": {
-                    "concept_name": retry_concept,
-                    "difficulty_level": concept_progress.difficulty_level.value if concept_progress else "beginner",
-                    "context": f"Retry attempt {concept_progress.retry_count + 1 if concept_progress else 1}",
-                },
-                "reason": f"Retrying concept: {retry_concept}",
+                "tool_args": tool_args,
+                "reason": f"Retrying concept: {retry_concept} (attempt {current_retry_count + 1}/{RetryManager.MAX_RETRIES}, strategy: {strategy_name})",
             }
         
         if not current_concept:

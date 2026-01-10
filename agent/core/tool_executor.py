@@ -5,7 +5,8 @@ from langchain_core.tools import BaseTool
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
-from agent.core.state import StudySessionState
+from agent.core.state import DifficultyLevel, StudySessionState
+from agent.tools.adapter_tool import adapt_difficulty
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
 from agent.tools.quizzer_tool import generate_quiz
@@ -20,7 +21,7 @@ class ToolExecutor:
     ):
         self.llm = llm
         self.state = state
-        self.tools = [plan_learning_path, teach_concept, generate_quiz, evaluate_response]
+        self.tools = [plan_learning_path, teach_concept, generate_quiz, evaluate_response, adapt_difficulty]
         self.tool_map: Dict[str, BaseTool] = {
             tool.name: tool for tool in self.tools
         }
@@ -67,6 +68,8 @@ class ToolExecutor:
         
         elif tool_name == "evaluate_response":
             import json
+            from agent.core.retry_manager import RetryManager
+            
             evaluation_result = tool_result
             if isinstance(evaluation_result, str):
                 try:
@@ -78,17 +81,36 @@ class ToolExecutor:
                 average_score = evaluation_result.get("average_score")
                 if average_score is not None:
                     concept_name_from_quiz = tool_args.get("concept_name")
-                    if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
-                        self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
-                    elif not concept_name_from_quiz:
+                    if not concept_name_from_quiz:
                         quiz_data_str = tool_args.get("quiz_data", "{}")
                         try:
                             quiz_data = json.loads(quiz_data_str) if isinstance(quiz_data_str, str) else quiz_data_str
                             concept_name_from_quiz = quiz_data.get("concept_name")
-                            if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
-                                self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
                         except (json.JSONDecodeError, TypeError):
                             pass
+                    
+                    if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
+                        retry_manager = RetryManager(self.state)
+                        if retry_manager.should_retry(concept_name_from_quiz, float(average_score)):
+                            retry_manager.mark_for_retry(concept_name_from_quiz, float(average_score))
+                        else:
+                            self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
+        
+        elif tool_name == "adapt_difficulty":
+            if isinstance(tool_result, dict) and "error" not in tool_result:
+                concept_name = tool_result.get("concept_name")
+                new_difficulty_str = tool_result.get("new_difficulty")
+                adaptation_applied = tool_result.get("adaptation_applied", False)
+                
+                if concept_name and new_difficulty_str and adaptation_applied:
+                    new_difficulty = DifficultyLevel.BEGINNER
+                    if new_difficulty_str == "intermediate":
+                        new_difficulty = DifficultyLevel.INTERMEDIATE
+                    elif new_difficulty_str == "advanced":
+                        new_difficulty = DifficultyLevel.ADVANCED
+                    
+                    if concept_name in self.state.concepts:
+                        self.state.update_difficulty(concept_name, new_difficulty)
     
     def execute_tool(
         self,

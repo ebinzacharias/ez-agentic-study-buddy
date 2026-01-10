@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ReAct loop implementation in StudyBuddyAgent with Observe → Decide → Act pattern
 - Quiz workflow integration connecting quiz generation and evaluation
 - Main agent run loop with completion detection and history tracking
+- Adapter Tool (`adapt_difficulty`)
+  - Analyzes performance metrics (quiz scores, retry counts, average scores)
+  - Adjusts difficulty level up or down based on explicit rules
+  - Handles edge cases (min/max difficulty boundaries)
+  - Updates state automatically after adaptation
+  - Integrated with ToolExecutor and agent loop
+- Retry Mechanisms (`RetryManager`)
+  - Retry counting with MAX_RETRIES limit (3 attempts)
+  - Re-explanation logic with alternative strategies per retry attempt
+  - Low score handling (automatically triggers retry for scores < 0.6)
+  - Alternative explanation strategies (simplify_explanation, alternative_approach, adapt_difficulty)
+  - Loop prevention through retry limits and difficulty adaptation
+  - Enhanced teacher tool with retry-specific instructions
+  - Integrated with DecisionRules and ToolExecutor for automatic retry handling
 - State Management System with Pydantic models
   - `ConceptProgress` model for tracking individual concept status
   - `StudySessionState` model for tracking overall session state
