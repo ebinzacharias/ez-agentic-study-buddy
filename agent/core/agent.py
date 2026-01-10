@@ -132,17 +132,36 @@ class StudyBuddyAgent:
                 if concept_name:
                     concept_progress = self.state.get_concept_progress(concept_name)
                     if concept_progress:
-                        current_difficulty = concept_progress.difficulty_level
-                        if current_difficulty == DifficultyLevel.ADVANCED:
-                            new_difficulty = DifficultyLevel.INTERMEDIATE
-                        elif current_difficulty == DifficultyLevel.INTERMEDIATE:
-                            new_difficulty = DifficultyLevel.BEGINNER
-                        else:
-                            new_difficulty = DifficultyLevel.BEGINNER
+                        tool_args = {
+                            "concept_name": concept_name,
+                            "current_difficulty": concept_progress.difficulty_level.value,
+                            "quiz_score": concept_progress.score if concept_progress.score is not None else None,
+                            "retry_count": concept_progress.retry_count,
+                            "average_score": concept_progress.score if concept_progress.score is not None else None,
+                        }
+                        tool_call_id = f"adapt_{self.iteration_count}"
                         
-                        self.state.update_difficulty(concept_name, new_difficulty)
-                        result["success"] = True
-                        result["result"] = f"Difficulty adapted for {concept_name}: {current_difficulty.value} -> {new_difficulty.value}"
+                        tool_message = self.tool_executor.execute_tool(
+                            tool_name="adapt_difficulty",
+                            tool_args=tool_args,
+                            tool_call_id=tool_call_id,
+                        )
+                        
+                        import json
+                        try:
+                            tool_result = json.loads(tool_message.content) if isinstance(tool_message.content, str) else tool_message.content
+                            if isinstance(tool_result, dict) and "error" not in tool_result:
+                                result["success"] = True
+                                result["result"] = tool_message.content
+                            else:
+                                result["error"] = tool_result.get("error", "Unknown error in adaptation")
+                        except (json.JSONDecodeError, TypeError):
+                            result["success"] = True
+                            result["result"] = tool_message.content
+                    else:
+                        result["error"] = f"Concept '{concept_name}' not found in state"
+                else:
+                    result["error"] = "No concept_name provided for adaptation"
             
             elif action == "session_complete":
                 result["success"] = True
