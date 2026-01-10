@@ -1,10 +1,10 @@
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
-from langchain_core.messages import ToolMessage
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
+from agent.chains.decision_chain import create_step_chain
 from agent.core.decision_rules import DecisionRules
 from agent.core.state import DifficultyLevel, StudySessionState
 from agent.core.tool_executor import ToolExecutor
@@ -26,19 +26,31 @@ class StudyBuddyAgent:
         
         if session_state is None:
             if topic is None:
-                raise ValueError("Either session_state or topic must be provided")
+                raise ValueError(
+                    "Either session_state or topic must be provided. "
+                    "Provide a topic to create a new session, or pass an existing session_state."
+                )
+            if not isinstance(topic, str) or not topic.strip():
+                raise ValueError(
+                    f"Topic must be a non-empty string. Got: {type(topic).__name__} = '{topic}'"
+                )
             session_id = str(uuid.uuid4())
             session_state = StudySessionState(
                 session_id=session_id,
-                topic=topic,
+                topic=topic.strip(),
             )
         
         self.state = session_state
         self.decision_rules = DecisionRules(self.state)
         self.tool_executor = ToolExecutor(self.llm, self.state)
+        if max_iterations < 1:
+            raise ValueError(f"max_iterations must be at least 1. Got: {max_iterations}")
+        
         self.max_iterations = max_iterations
         self.iteration_count = 0
         self.history: List[Dict[str, Any]] = []
+        
+        self._step_chain = None
     
     def observe(self) -> Dict[str, Any]:
         return {
@@ -176,22 +188,64 @@ class StudyBuddyAgent:
         
         return result
     
+    def _get_step_chain(self) -> Any:
+        """Get or create the LCEL step chain."""
+        if self._step_chain is None:
+            self._step_chain = create_step_chain(
+                state_manager=self,
+                decision_rules=self.decision_rules,
+                tool_executor=self.tool_executor,
+                iteration_count=self.iteration_count,
+            )
+        return self._step_chain
+    
     def step(self) -> Dict[str, Any]:
-        observation = self.observe()
-        decision = self.decide(observation)
-        action_result = self.act(decision)
+        """
+        Execute one ReAct step using LCEL chains.
         
-        step_result = {
-            "iteration": self.iteration_count,
-            "observation": observation,
-            "decision": decision,
-            "action_result": action_result,
-        }
+        Returns:
+            Dictionary with iteration, observation, decision, and action_result
         
-        self.history.append(step_result)
-        self.iteration_count += 1
+        Raises:
+            RuntimeError: If step is called after session completion
+            Exception: If step execution fails
+        """
+        if self.is_complete():
+            raise RuntimeError(
+                f"Session already completed. "
+                f"Total iterations: {self.iteration_count}, "
+                f"Progress: {self.state.get_progress_percentage():.1f}%"
+            )
         
-        return step_result
+        try:
+            step_chain = create_step_chain(
+                state_manager=self,
+                decision_rules=self.decision_rules,
+                tool_executor=self.tool_executor,
+                iteration_count=self.iteration_count,
+            )
+            
+            input_dict = {}
+            step_result = step_chain.invoke(input_dict)
+            
+            result = {
+                "iteration": self.iteration_count,
+                "observation": step_result.get("observation", {}),
+                "decision": step_result.get("decision", {}),
+                "action_result": step_result.get("action_result", {}),
+            }
+            
+            self.history.append(result)
+            self.iteration_count += 1
+            
+            return result
+        
+        except Exception as e:
+            error_msg = (
+                f"Step execution failed at iteration {self.iteration_count}. "
+                f"Error: {str(e)}"
+            )
+            raise RuntimeError(error_msg) from e
     
     def is_complete(self) -> bool:
         if self.iteration_count >= self.max_iterations:
