@@ -26,6 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Loop prevention through retry limits and difficulty adaptation
   - Enhanced teacher tool with retry-specific instructions
   - Integrated with DecisionRules and ToolExecutor for automatic retry handling
+- LCEL Refactoring
+  - Refactored agent to use LangChain Expression Language (LCEL) for chain composition
+  - Created LCEL chains for observe, decide, and act steps
+  - Uses RunnablePassthrough for state management throughout chains
+  - Composes chains with pipe operator (|) for declarative flow
+  - Maintains backward compatibility with original methods
+  - Better separation of concerns and code maintainability
+- Testing and Edge Case Handling
+  - Comprehensive end-to-end testing with full learning flow validation
+  - Edge case handling for empty topics, no concepts, max iterations, invalid states
+  - Improved error handling with clear, contextual error messages
+  - System robustness testing with multiple topics and scenarios
+  - Usage documentation (USAGE.md) with examples, best practices, and troubleshooting
+  - Updated README with quick start guide
+  - Validates inputs and handles exceptions gracefully throughout the system
 - State Management System with Pydantic models
   - `ConceptProgress` model for tracking individual concept status
   - `StudySessionState` model for tracking overall session state
