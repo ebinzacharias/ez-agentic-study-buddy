@@ -71,6 +71,15 @@ For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Quick Start
 
+```python
+from agent.core.agent import StudyBuddyAgent
+
+agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
+result = agent.run()
+```
+
+See [USAGE.md](USAGE.md) for detailed usage guide and examples.
+
 ### Prerequisites
 
 - Python 3.11+
@@ -96,10 +105,11 @@ uv run python scripts/test_llm.py
 ```python
 from agent.core.agent import StudyBuddyAgent
 
-agent = StudyBuddyAgent(topic="Python Basics")
-observation = agent.observe()
-result = agent.step()
+agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
+result = agent.run()
 ```
+
+See [USAGE.md](USAGE.md) for detailed usage guide, examples, and best practices.
 
 ## Project Structure
 
@@ -118,6 +128,7 @@ agent/
 
 ## Documentation
 
+- [Usage Guide](./USAGE.md) - Complete usage guide with examples and best practices
 - [Architecture](./ARCHITECTURE.md) - System design and diagrams
 - [Learning Notes](./LEARNINGS/) - Step-by-step implementation guide
 - [Changelog](./CHANGELOG.md) - Version history
