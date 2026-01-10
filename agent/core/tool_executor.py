@@ -6,7 +6,9 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from agent.core.state import StudySessionState
+from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
+from agent.tools.quizzer_tool import generate_quiz
 from agent.tools.teacher_tool import teach_concept
 
 
@@ -18,7 +20,7 @@ class ToolExecutor:
     ):
         self.llm = llm
         self.state = state
-        self.tools = [plan_learning_path, teach_concept]
+        self.tools = [plan_learning_path, teach_concept, generate_quiz, evaluate_response]
         self.tool_map: Dict[str, BaseTool] = {
             tool.name: tool for tool in self.tools
         }
@@ -62,6 +64,31 @@ class ToolExecutor:
             concept_name = tool_args.get("concept_name")
             if concept_name and concept_name in self.state.concepts:
                 self.state.mark_concept_taught(concept_name)
+        
+        elif tool_name == "evaluate_response":
+            import json
+            evaluation_result = tool_result
+            if isinstance(evaluation_result, str):
+                try:
+                    evaluation_result = json.loads(evaluation_result)
+                except json.JSONDecodeError:
+                    return
+            
+            if isinstance(evaluation_result, dict):
+                average_score = evaluation_result.get("average_score")
+                if average_score is not None:
+                    concept_name_from_quiz = tool_args.get("concept_name")
+                    if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
+                        self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
+                    elif not concept_name_from_quiz:
+                        quiz_data_str = tool_args.get("quiz_data", "{}")
+                        try:
+                            quiz_data = json.loads(quiz_data_str) if isinstance(quiz_data_str, str) else quiz_data_str
+                            concept_name_from_quiz = quiz_data.get("concept_name")
+                            if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
+                                self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
+                        except (json.JSONDecodeError, TypeError):
+                            pass
     
     def execute_tool(
         self,
