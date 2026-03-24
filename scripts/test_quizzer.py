@@ -1,9 +1,10 @@
-from pathlib import Path
 import sys
-from agent.tools.quizzer_tool import generate_quiz
+from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.tools.quizzer_tool import generate_quiz  # noqa: E402
 
 
 def test_quizzer():
