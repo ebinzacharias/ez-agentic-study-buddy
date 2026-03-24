@@ -11,6 +11,7 @@ def plan_learning_path(
     topic: str,
     difficulty_level: str = "beginner",
     max_concepts: int = 10,
+    source_material: str = "",
 ) -> List[dict]:
     """
     Breaks down a learning topic into an ordered list of concepts to teach.
@@ -18,11 +19,16 @@ def plan_learning_path(
     This tool analyzes a topic and creates a structured learning path by identifying
     the key concepts that should be taught in sequence. It considers prerequisites
     and logical ordering to ensure concepts build upon each other.
+
+    When source_material is provided (from user-uploaded content), the learning path
+    is derived from the actual material rather than general knowledge.
     
     Args:
         topic: The main topic or subject to create a learning path for (e.g., "Python Basics", "Machine Learning")
         difficulty_level: Overall difficulty level for the path ("beginner", "intermediate", or "advanced")
         max_concepts: Maximum number of concepts to include in the learning path (default: 10)
+        source_material: Optional text extracted from user-uploaded study materials.
+            When provided, concepts are grounded in the actual content.
     
     Returns:
         A list of dictionaries, each containing:
@@ -39,9 +45,20 @@ def plan_learning_path(
         ]
     """
     llm = get_llm_client()
+
+    material_block = ""
+    if source_material.strip():
+        material_block = f"""
+--- BEGIN USER-UPLOADED STUDY MATERIAL ---
+{source_material[:3000]}
+--- END USER-UPLOADED STUDY MATERIAL ---
+
+IMPORTANT: Derive the concepts primarily from the study material above.
+Only add general-knowledge concepts if the material is insufficient.
+"""
     
     prompt = f"""Break down the topic "{topic}" into {max_concepts} key concepts to teach.
-
+{material_block}
 Requirements:
 - Create a logical learning sequence where each concept builds on previous ones
 - Overall difficulty level: {difficulty_level}
