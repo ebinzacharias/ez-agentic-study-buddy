@@ -1,10 +1,11 @@
-from agent.core.agent import StudyBuddyAgent
-from agent.core.state import StudySessionState
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.core.agent import StudyBuddyAgent  # noqa: E402
+from agent.core.state import StudySessionState  # noqa: E402
 
 
 def test_full_learning_flow():

@@ -1,12 +1,13 @@
-from agent.core.tool_executor import ToolExecutor
-from agent.tools.planner_tool import plan_learning_path
-from agent.utils.llm_client import get_llm_client
-from langchain_core.messages import ToolMessage
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.core.tool_executor import ToolExecutor  # noqa: E402
+from agent.tools.planner_tool import plan_learning_path  # noqa: E402
+from agent.utils.llm_client import get_llm_client  # noqa: E402
+from langchain_core.messages import ToolMessage  # noqa: E402
 
 
 def test_manual_tool_calling():

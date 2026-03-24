@@ -1,9 +1,10 @@
-from pathlib import Path
 import sys
-from agent.tools.planner_tool import plan_learning_path
+from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.tools.planner_tool import plan_learning_path  # noqa: E402
 
 
 def test_planner():

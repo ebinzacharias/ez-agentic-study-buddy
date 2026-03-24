@@ -1,10 +1,10 @@
-
-from agent.tools.adapter_tool import adapt_difficulty
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.tools.adapter_tool import adapt_difficulty  # noqa: E402
 
 
 def test_adapter_tool():

@@ -1,10 +1,11 @@
-from agent.core.decision_rules import DecisionRules
-from agent.core.state import DifficultyLevel, StudySessionState
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from agent.core.decision_rules import DecisionRules  # noqa: E402
+from agent.core.state import DifficultyLevel, StudySessionState  # noqa: E402
 
 
 def test_decision_rules():
