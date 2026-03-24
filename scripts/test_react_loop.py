@@ -1,12 +1,16 @@
+import os
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.core.agent import StudyBuddyAgent
+import pytest  # noqa: E402
+
+from agent.core.agent import StudyBuddyAgent  # noqa: E402
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_react_loop():
     print("Testing ReAct Loop")
     print("=" * 60)
@@ -48,6 +52,7 @@ def test_react_loop():
     return True
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_full_run():
     print("\n" + "=" * 60)
     print("Testing Full Run (Limited Iterations)")

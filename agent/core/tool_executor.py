@@ -5,7 +5,7 @@ from langchain_core.tools import BaseTool
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
-from agent.core.state import DifficultyLevel, StudySessionState
+from agent.core.state import StudySessionState
 from agent.tools.adapter_tool import adapt_difficulty
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
@@ -57,7 +57,7 @@ class ToolExecutor:
                                 difficulty = DifficultyLevel.ADVANCED
                             self.state.add_concept(concept_name, difficulty)
                 self.state.concepts_planned = [
-                    c.get("concept_name") for c in tool_result
+                    str(c.get("concept_name")) for c in tool_result
                     if isinstance(c, dict) and c.get("concept_name")
                 ]
         
@@ -103,14 +103,15 @@ class ToolExecutor:
                 adaptation_applied = tool_result.get("adaptation_applied", False)
                 
                 if concept_name and new_difficulty_str and adaptation_applied:
-                    new_difficulty = DifficultyLevel.BEGINNER
+                    from agent.core.state import DifficultyLevel as DL
+                    new_difficulty = DL.BEGINNER
                     if new_difficulty_str == "intermediate":
-                        new_difficulty = DifficultyLevel.INTERMEDIATE
+                        new_difficulty = DL.INTERMEDIATE
                     elif new_difficulty_str == "advanced":
-                        new_difficulty = DifficultyLevel.ADVANCED
+                        new_difficulty = DL.ADVANCED
                     
                     if concept_name in self.state.concepts:
-                        self.state.update_difficulty(concept_name, new_difficulty)
+                        self.state.concepts[concept_name].update_difficulty(new_difficulty)
     
     def execute_tool(
         self,
@@ -137,8 +138,8 @@ class ToolExecutor:
         tool_messages = []
         
         for tool_call in tool_calls:
-            tool_name = tool_call.get("name")
-            tool_call_id = tool_call.get("id")
+            tool_name = str(tool_call.get("name", ""))
+            tool_call_id = str(tool_call.get("id", ""))
             tool_args = tool_call.get("args", {})
             
             tool_message = self.execute_tool(tool_name, tool_args, tool_call_id)

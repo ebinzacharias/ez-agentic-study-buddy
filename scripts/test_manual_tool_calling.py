@@ -1,15 +1,19 @@
+import os
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.core.tool_executor import ToolExecutor
-from agent.tools.planner_tool import plan_learning_path
-from agent.utils.llm_client import get_llm_client
-from langchain_core.messages import ToolMessage
+import pytest  # noqa: E402
+
+from agent.core.tool_executor import ToolExecutor  # noqa: E402
+from agent.tools.planner_tool import plan_learning_path  # noqa: E402
+from agent.utils.llm_client import get_llm_client  # noqa: E402
+from langchain_core.messages import ToolMessage  # noqa: E402
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_manual_tool_calling():
     print("=" * 60)
     print("Test 1: Manual Tool Calling (Step by Step)")
@@ -80,7 +84,7 @@ Create a learning path by calling the plan_learning_path tool."""
         
         try:
             tool_result = tool_map[tool_name].invoke(tool_args)
-            print(f"✓ Tool executed successfully")
+            print("✓ Tool executed successfully")
             print(f"    Result: {len(tool_result)} concepts planned")
             
             tool_message = ToolMessage(
@@ -98,7 +102,7 @@ Create a learning path by calling the plan_learning_path tool."""
     
     print("\n6. Final Results:")
     print("=" * 60)
-    print(f"✓ LLM invoked with tool binding")
+    print("✓ LLM invoked with tool binding")
     print(f"✓ Tool calls extracted: {len(tool_calls)}")
     print(f"✓ Tools executed: {len(tool_messages)}")
     print(f"✓ ToolMessages created: {len(tool_messages)}")
@@ -113,6 +117,7 @@ Create a learning path by calling the plan_learning_path tool."""
     return True
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_tool_executor():
     print("\n" + "=" * 60)
     print("Test 2: Using ToolExecutor Class")
