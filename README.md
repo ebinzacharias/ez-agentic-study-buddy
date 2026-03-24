@@ -5,7 +5,43 @@
 
 **Started:** January 2026
 
+
 ## Vision & MVP
+
+## Features (Current Implementation)
+
+- **Multi-Agent Collaboration:** Modular agents (Planner, Teacher, Quizzer, Evaluator, Adapter) work together to deliver personalized learning experiences.
+- **Agentic Workflows:** Implements ReAct pattern and decision rules for autonomous learning flows.
+- **Tool Integration:** Agents use modular tools for planning, teaching, quizzing, evaluating, and adapting.
+- **State Management:** Tracks session progress and adapts difficulty using Pydantic models.
+- **Retry & Error Handling:** Retry logic and alternative teaching strategies for robustness.
+- **Content Loading:** (Planned) User-uploaded materials folder is scaffolded, but current workflows use built-in examples.
+
+
+## Tech Stack
+
+- **Python 3.11+**
+- **Pydantic** for state and data validation
+- **LangGraph, CrewAI, BeeAI, AG2 (AutoGen)** concepts and patterns
+- **Groq/OpenAI LLMs** (pluggable)
+- **uv** package manager for fast dependency management
+
+
+## Quick Start
+
+```bash
+# Install dependencies
+uv sync
+
+# Configure environment
+cp .env.example .env
+# Edit .env and add your GROQ_API_KEY
+
+# Test setup
+uv run python scripts/test_llm.py
+```
+
+See [USAGE.md](USAGE.md) for more details and examples.
 
 EZ Agentic Study Buddy is an open-source, modular platform for building and running multi-agent AI study assistants. The MVP enables any user to:
 - Install the repo and run it locally with minimal setup
@@ -18,13 +54,8 @@ EZ Agentic Study Buddy is an open-source, modular platform for building and runn
 - Showcase practical multi-agent AI, tool integration, and adaptive workflows
 - Serve as a living lab for agentic AI experimentation and learning
 
-## Showcase / For Recruiters
 
-- **Agentic Frameworks:** Implements patterns and concepts from LangGraph, CrewAI, BeeAI, and AG2 (AutoGen)
-- **Multi-Agent System:** Modular agents (Planner, Teacher, Quizzer, Evaluator, Adapter, etc.) collaborate to deliver personalized learning
-- **Extensible Design:** Easily add new agents, tools, or workflows
-- **Content-Pluggable:** Users can bring their own materials—no hardcoded content
-- **Learning Journey:** Includes step-by-step notes and concept docs demonstrating deep understanding of agentic AI
+
 
 ## How to Use
 
