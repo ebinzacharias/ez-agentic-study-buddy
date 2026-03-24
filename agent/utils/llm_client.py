@@ -40,7 +40,7 @@ def initialize_llm(
         return ChatGroq(
             model=model,
             temperature=temperature,
-            groq_api_key=api_key,
+            api_key=api_key,  # type: ignore[arg-type]
         )
     
     elif provider.lower() == "openai":
@@ -52,7 +52,7 @@ def initialize_llm(
         return ChatOpenAI(
             model=model,
             temperature=temperature,
-            api_key=api_key,
+            api_key=api_key,  # type: ignore[arg-type]
         )
     
     else:

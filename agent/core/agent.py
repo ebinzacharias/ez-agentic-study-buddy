@@ -81,7 +81,7 @@ class StudyBuddyAgent:
         
         try:
             if action == "plan_learning_path":
-                tool_name = decision.get("tool_name")
+                tool_name = str(decision.get("tool_name", ""))
                 tool_args = decision.get("tool_args", {})
                 tool_call_id = f"plan_{self.iteration_count}"
                 
@@ -114,7 +114,7 @@ class StudyBuddyAgent:
                     result["result"] = f"Current concept set to: {concept_name}"
             
             elif action == "teach_concept":
-                tool_name = decision.get("tool_name")
+                tool_name = str(decision.get("tool_name", ""))
                 tool_args = decision.get("tool_args", {})
                 tool_call_id = f"teach_{self.iteration_count}"
                 
@@ -127,7 +127,7 @@ class StudyBuddyAgent:
                 result["result"] = tool_message.content
             
             elif action == "generate_quiz":
-                tool_name = decision.get("tool_name")
+                tool_name = str(decision.get("tool_name", ""))
                 tool_args = decision.get("tool_args", {})
                 tool_call_id = f"quiz_{self.iteration_count}"
                 
@@ -165,8 +165,11 @@ class StudyBuddyAgent:
                             if isinstance(tool_result, dict) and "error" not in tool_result:
                                 result["success"] = True
                                 result["result"] = tool_message.content
-                            else:
+                            elif isinstance(tool_result, dict):
                                 result["error"] = tool_result.get("error", "Unknown error in adaptation")
+                            else:
+                                result["success"] = True
+                                result["result"] = tool_message.content
                         except (json.JSONDecodeError, TypeError):
                             result["success"] = True
                             result["result"] = tool_message.content
@@ -225,7 +228,7 @@ class StudyBuddyAgent:
                 iteration_count=self.iteration_count,
             )
             
-            input_dict = {}
+            input_dict: Dict[str, Any] = {}
             step_result = step_chain.invoke(input_dict)
             
             result = {
