@@ -38,14 +38,14 @@ jobs:
           uv run python -m py_compile agent/**/*.py scripts/**/*.py || true
       - name: Lint with ruff
         run: |
-          pip install ruff
-          ruff check .
+          uv pip install ruff
+          uv run ruff check .
       - name: Type check with mypy
         run: |
-          pip install mypy
-          mypy .
+          uv pip install mypy
+          uv run mypy .
       - name: Run tests
         run: |
-          pip install pytest
-          pytest
+          uv pip install pytest
+          uv run pytest
 
