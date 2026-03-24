@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Minimal multi-agent architecture foundation:
+  - Base agent class (`AgentBase`) with state, messaging, and reasoning loop
+  - PlannerAgent and TeacherAgent as independent agent subclasses
+  - Orchestrator for agent instantiation and message passing
+  - Demo interaction between agents (see `agent/core/orchestrator.py`)
+  - Updated README with new architecture diagram and explanation
 - Decision Rules system with explicit if/then logic for state-driven decisions
 - ReAct loop implementation in StudyBuddyAgent with Observe → Decide → Act pattern
 - Quiz workflow integration connecting quiz generation and evaluation
