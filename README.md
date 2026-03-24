@@ -10,7 +10,7 @@
 
 ## Features (Current Implementation)
 
-- **Multi-Agent Collaboration:** Modular agents (Planner, Teacher, Quizzer, Evaluator, Adapter) work together to deliver personalized learning experiences.
+- **Multi-Agent Collaboration:** Minimal multi-agent architecture implemented. Agents (Planner, Teacher) are independent classes with their own state and message handling. An orchestrator manages agent communication. More agents (Quizzer, Evaluator, Adapter) will be added as independent agents or modules.
 - **Agentic Workflows:** Implements ReAct pattern and decision rules for autonomous learning flows.
 - **Tool Integration:** Agents use modular tools for planning, teaching, quizzing, evaluating, and adapting.
 - **State Management:** Tracks session progress and adapts difficulty using Pydantic models.
@@ -68,30 +68,30 @@ See [USAGE.md](USAGE.md) for detailed instructions and examples.
 
 ## Core Architecture
 
+
+### Minimal Multi-Agent Architecture
+
 ```mermaid
-graph TB
-    subgraph "StudyBuddyAgent"
-        Agent[StudyBuddyAgent]
-        ReAct[ReAct Loop<br/>observe → decide → act]
-        Agent --> ReAct
+flowchart TD
+    subgraph Orchestrator
+        O[Orchestrator]
     end
-    
-    LLM[LLM Client<br/>Groq/OpenAI]
-    State[State Manager<br/>StudySessionState<br/>ConceptProgress]
-    ToolExec[ToolExecutor<br/>Tool Binding & Execution]
-    Tools[Tools<br/>Planner ✅, Teacher ✅, Quizzer ✅, Evaluator ✅, Adapter ✅]
-    
-    Agent --> LLM
-    Agent --> State
-    Agent --> ToolExec
-    ToolExec --> Tools
-    ToolExec --> State
-    
-    style Agent fill:#e1f5ff
-    style ReAct fill:#fff4e1
-    style LLM fill:#e8f5e9
-    style State fill:#f3e5f5
+    subgraph Agents
+        P[PlannerAgent]
+        T[TeacherAgent]
+    end
+    O --> P
+    O --> T
+    P -- sends plan --> T
+    T -- responds/acts --> O
 ```
+
+**How it works:**
+- Each agent is a class with its own state and message handler.
+- The orchestrator instantiates agents and manages message passing.
+- Agents communicate by sending and receiving messages (see `agent/core/agent_base.py`, `agent/agents/planner_agent.py`, `agent/agents/teacher_agent.py`, `agent/core/orchestrator.py`).
+
+This foundation will be extended with more agents and richer workflows in future phases.
 
 ### ReAct Pattern
 
