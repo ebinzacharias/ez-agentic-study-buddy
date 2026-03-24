@@ -1,11 +1,10 @@
+from agent.core.quiz_workflow import QuizWorkflow
+from agent.core.state import StudySessionState, DifficultyLevel
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.core.quiz_workflow import QuizWorkflow
-from agent.core.state import StudySessionState, DifficultyLevel
 
 
 def test_complete_quiz_workflow():
@@ -84,7 +83,7 @@ def test_complete_quiz_workflow():
     print(f"   Status: {status_after['status']}")
     print(f"   Retry Count: {status_after.get('retry_count', 0)}")
     
-    assert status_after['quiz_taken'] == True, "Quiz not marked as taken"
+    assert status_after['quiz_taken'], "Quiz not marked as taken"
     assert status_after['score'] is not None, "Score not stored"
     assert status_after['score'] >= 0.0 and status_after['score'] <= 1.0, "Invalid score range"
     print("   ✓ State updated correctly")

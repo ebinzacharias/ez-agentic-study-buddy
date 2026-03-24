@@ -1,6 +1,5 @@
 from pathlib import Path
 import sys
-import traceback
 from agent.tools.teacher_tool import teach_concept
 
 project_root = Path(__file__).parent.parent

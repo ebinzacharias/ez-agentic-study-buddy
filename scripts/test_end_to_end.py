@@ -1,11 +1,10 @@
+from agent.core.agent import StudyBuddyAgent
+from agent.core.state import StudySessionState
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.core.agent import StudyBuddyAgent
-from agent.core.state import StudySessionState
 
 
 def test_full_learning_flow():
@@ -69,7 +68,7 @@ def test_edge_case_empty_topic():
     print("=" * 60)
     
     try:
-        agent = StudyBuddyAgent(topic="")
+        StudyBuddyAgent(topic="")
         print("✗ Should have raised ValueError for empty topic")
         return False
     except ValueError as e:
@@ -86,7 +85,7 @@ def test_edge_case_none_topic():
     print("=" * 60)
     
     try:
-        agent = StudyBuddyAgent(topic=None)
+        StudyBuddyAgent(topic=None)
         print("✗ Should have raised ValueError for None topic")
         return False
     except ValueError as e:
@@ -215,7 +214,7 @@ def test_error_handling():
         agent = StudyBuddyAgent(topic="Test", max_iterations=3)
         
         observation = agent.observe()
-        decision = agent.decide(observation)
+        agent.decide(observation)
         
         invalid_decision = {"action": "invalid_action_xyz"}
         action_result = agent.act(invalid_decision)

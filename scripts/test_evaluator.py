@@ -1,11 +1,11 @@
+
+from agent.tools.evaluator_tool import evaluate_response
 import json
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.tools.evaluator_tool import evaluate_response
 
 
 def test_evaluator():
