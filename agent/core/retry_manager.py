@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from agent.core.state import ConceptProgress, ConceptStatus, DifficultyLevel, StudySessionState
+from agent.core.state import StudySessionState
 
 
 class RetryManager:
@@ -189,9 +189,9 @@ class RetryManager:
             return f"Re-teaching concept: {concept_name}"
         
         context_parts = [
-            f"Re-teaching attempt {strategy['retry_count']}",
+            f"Re-teaching attempt {strategy.get('retry_count', 'N/A')}",
             f"Strategy: {strategy['strategy']}",
-            f"Approach: {strategy['approach']}",
+            f"Approach: {strategy.get('approach', strategy.get('reason', 'N/A'))}",
         ]
         
         if strategy.get("context_notes"):

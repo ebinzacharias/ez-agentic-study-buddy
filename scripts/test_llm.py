@@ -4,7 +4,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.utils.llm_client import get_llm_client
+from agent.utils.llm_client import get_llm_client  # noqa: E402
 
 
 def test_llm_connection():

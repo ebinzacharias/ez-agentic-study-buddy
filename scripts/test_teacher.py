@@ -4,7 +4,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.tools.teacher_tool import teach_concept
+from agent.tools.teacher_tool import teach_concept  # noqa: E402
 
 
 def test_teacher():
@@ -34,7 +34,7 @@ def test_teacher():
         
         try:
             result = teach_concept.invoke(test_case)
-            print(f"✓ Tool executed successfully")
+            print("✓ Tool executed successfully")
             print(f"\nTeaching Content ({len(result)} chars):")
             print(result[:300] + "..." if len(result) > 300 else result)
             print()

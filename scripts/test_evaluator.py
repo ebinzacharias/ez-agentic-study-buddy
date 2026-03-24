@@ -5,7 +5,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.tools.evaluator_tool import evaluate_response
+from agent.tools.evaluator_tool import evaluate_response  # noqa: E402
 
 
 def test_evaluator():
@@ -90,8 +90,8 @@ def test_evaluator():
                 "learner_answers": json.dumps(learner_answers)
             })
             
-            print(f"✓ Tool executed successfully")
-            print(f"\nResults:")
+            print("✓ Tool executed successfully")
+            print("\nResults:")
             print(f"  Total Questions: {result.get('total_questions', 0)}")
             print(f"  Questions Evaluated: {result.get('questions_evaluated', 0)}")
             print(f"  Total Score: {result.get('total_score', 0.0)}")
@@ -99,7 +99,7 @@ def test_evaluator():
             print(f"  Overall Percentage: {result.get('overall_percentage', 0.0):.1f}%")
             
             scores = result.get('scores', [])
-            print(f"\n  Individual Scores:")
+            print("\n  Individual Scores:")
             for score in scores:
                 status = "✓" if score.get('is_correct', False) else "✗"
                 print(f"    {status} Q{score.get('question_number', '?')}: "
