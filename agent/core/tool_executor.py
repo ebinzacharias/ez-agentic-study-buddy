@@ -5,7 +5,7 @@ from langchain_core.tools import BaseTool
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
-from agent.core.state import DifficultyLevel, StudySessionState
+from agent.core.state import StudySessionState
 from agent.tools.adapter_tool import adapt_difficulty
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path

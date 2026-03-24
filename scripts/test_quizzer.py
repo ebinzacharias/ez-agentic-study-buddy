@@ -36,7 +36,7 @@ def test_quizzer():
         
         try:
             result = generate_quiz.invoke(test_case)
-            print(f"✓ Tool executed successfully")
+            print("✓ Tool executed successfully")
             
             if "error" in result:
                 print(f"⚠ Error: {result['error']}")
@@ -44,7 +44,7 @@ def test_quizzer():
                     print(f"Raw response: {result['raw_response'][:200]}...")
                 continue
             
-            print(f"\nQuiz Generated:")
+            print("\nQuiz Generated:")
             print(f"  Concept: {result.get('concept_name', 'N/A')}")
             print(f"  Difficulty: {result.get('difficulty_level', 'N/A')}")
             print(f"  Total Questions: {result.get('total_questions', 0)}")

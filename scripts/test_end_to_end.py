@@ -36,7 +36,7 @@ def test_full_learning_flow():
             
             action_result = step_result.get("action_result", {})
             if action_result.get("success"):
-                print(f"  ✓ Success")
+                print("  ✓ Success")
             else:
                 error = action_result.get("error", "Unknown error")
                 print(f"  ✗ Error: {error}")

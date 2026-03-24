@@ -18,7 +18,7 @@ def test_planner():
             "max_concepts": 5
         })
         
-        print(f"✓ Tool executed successfully")
+        print("✓ Tool executed successfully")
         print(f"\nLearning Path ({len(result)} concepts):")
         print("-" * 50)
         

@@ -34,7 +34,7 @@ def test_state_updates():
     }
     
     tool_messages = executor.execute_tool_calls([tool_call_plan])
-    print(f"   ✓ Tool executed")
+    print("   ✓ Tool executed")
     print(f"   Concepts in state: {list(state.concepts.keys())}")
     print(f"   Concepts planned: {state.concepts_planned}")
     print(f"   Total concepts: {len(state.concepts)}")
@@ -56,7 +56,7 @@ def test_state_updates():
     }
     
     tool_messages = executor.execute_tool_calls([tool_call_teach])
-    print(f"   ✓ Tool executed")
+    print("   ✓ Tool executed")
     
     concept_progress = state.get_concept_progress(concept_to_teach)
     if concept_progress:
@@ -76,7 +76,7 @@ def test_state_updates():
     concept_progress = state.get_concept_progress(concept_to_teach)
     assert concept_progress is not None, "Concept progress not found"
     assert concept_progress.taught_at is not None, "Concept taught_at timestamp not set"
-    print(f"   ✓ State persists correctly")
+    print("   ✓ State persists correctly")
     
     print("\n✓ State update test passed!")
     return True
