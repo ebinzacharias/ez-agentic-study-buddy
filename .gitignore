@@ -50,3 +50,13 @@ uv.lock
 .ruff_cache/
 .pre-commit/
 
+# Web UI
+node_modules/
+webui/node_modules/
+webui/dist/
+webui/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
