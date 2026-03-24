@@ -30,6 +30,6 @@ class AgentBase:
             message = self.inbox.pop(0)
             self.handle_message(message, agent_registry)
 
-    def handle_message(self, message: Dict[str, Any]):
+    def handle_message(self, message: Dict[str, Any], agent_registry):
         """Handle an incoming message (override in subclass)."""
         raise NotImplementedError("handle_message must be implemented by subclasses.")

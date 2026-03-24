@@ -5,7 +5,7 @@ class PlannerAgent(AgentBase):
     """
     Agent responsible for planning study sessions or learning paths.
     """
-    def handle_message(self, message: Dict[str, Any], agent_registry: Dict[str, AgentBase]):
+    def handle_message(self, message: Dict[str, Any], agent_registry):
         print(f"[PlannerAgent] Received message: {message}")
         # Example: respond to a 'plan_request' message
         if message.get('type') == 'plan_request':
