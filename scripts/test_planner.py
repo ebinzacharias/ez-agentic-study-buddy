@@ -1,10 +1,10 @@
-import sys
 from pathlib import Path
+import sys
+import traceback
+from agent.tools.planner_tool import plan_learning_path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.tools.planner_tool import plan_learning_path
 
 
 def test_planner():
