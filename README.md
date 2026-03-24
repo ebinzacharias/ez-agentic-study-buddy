@@ -1,17 +1,39 @@
+
 # EZ Agentic Study Buddy
 
-A single-agent AI tutor that autonomously guides learners through topics using the ReAct (Reasoning + Acting) pattern.
+**A Modular Multi-Agent Study Assistant Platform**
 
 **Started:** January 2026
 
-## Overview
+## Vision & MVP
 
-An AI agent that makes autonomous decisions about learning flow:
-- Plans learning paths from topics
-- Teaches concepts step-by-step
-- Tests understanding with quizzes
-- Evaluates responses and adapts difficulty
-- Tracks progress throughout the session
+EZ Agentic Study Buddy is an open-source, modular platform for building and running multi-agent AI study assistants. The MVP enables any user to:
+- Install the repo and run it locally with minimal setup
+- Add their own course materials or documentation (PDF, markdown, text) to the `materials/` folder
+- Interact with agentic workflows (quiz generation, summarization, adaptive learning, etc.) via a simple UI (CLI or web)
+- Receive quizzes, explanations, and feedback based only on their own uploaded content
+
+**Why?**
+- Empower anyone to turn their own materials into interactive learning experiences
+- Showcase practical multi-agent AI, tool integration, and adaptive workflows
+- Serve as a living lab for agentic AI experimentation and learning
+
+## Showcase / For Recruiters
+
+- **Agentic Frameworks:** Implements patterns and concepts from LangGraph, CrewAI, BeeAI, and AG2 (AutoGen)
+- **Multi-Agent System:** Modular agents (Planner, Teacher, Quizzer, Evaluator, Adapter, etc.) collaborate to deliver personalized learning
+- **Extensible Design:** Easily add new agents, tools, or workflows
+- **Content-Pluggable:** Users can bring their own materials—no hardcoded content
+- **Learning Journey:** Includes step-by-step notes and concept docs demonstrating deep understanding of agentic AI
+
+## How to Use
+
+1. **Clone the repo and install dependencies** (see Setup below)
+2. **Add your course materials** (PDF, markdown, or text) to the `materials/` folder
+3. **Run the UI** (CLI or web) to select documents and start agentic workflows (quiz, summarize, teach, etc.)
+4. **Get interactive quizzes, explanations, and feedback based on your own content**
+
+See [USAGE.md](USAGE.md) for detailed instructions and examples.
 
 ## Core Architecture
 
@@ -118,34 +140,27 @@ result = agent.run()
 
 See [USAGE.md](USAGE.md) for detailed usage guide, examples, and best practices.
 
+
 ## Project Structure
 
 ```
-agent/
-├── chains/
-│   └── decision_chain.py    # LCEL chains for ReAct loop
-├── core/
-│   ├── agent.py             # StudyBuddyAgent class
-│   ├── state.py             # State models (StudySessionState, ConceptProgress)
-│   ├── decision_rules.py    # Rule-based decision making
-│   ├── retry_manager.py     # Retry logic and strategies
-│   ├── quiz_workflow.py     # Quiz generation and evaluation workflow
-│   └── tool_executor.py     # Tool execution and state updates
-├── tools/
-│   ├── planner_tool.py      # Learning path planning
-│   ├── teacher_tool.py      # Concept teaching (with retry support)
-│   ├── quizzer_tool.py      # Quiz generation
-│   ├── evaluator_tool.py    # Response evaluation (explicit scoring)
-│   └── adapter_tool.py      # Difficulty adaptation
-└── utils/
-    └── llm_client.py        # LLM initialization
+agent/           # Core logic, workflows, state, agent orchestration
+tools/           # Modular tools (planner, teacher, quizzer, etc.)
+utils/           # Utilities (LLM client, helpers)
+materials/       # User-uploaded documents (PDF, markdown, text)
+ui/              # CLI or web interface code
+docs/            # User/developer documentation (optional)
+LEARNINGS/       # Step-by-step notes, concepts, and learning journey
+scripts/         # Test scripts
+README.md, USAGE.md, ARCHITECTURE.md, etc.
 ```
+
 
 ## Documentation
 
 - [Usage Guide](./USAGE.md) - Complete usage guide with examples and best practices
 - [Architecture](./ARCHITECTURE.md) - System design and diagrams
-- [Learning Notes](./LEARNINGS/) - Step-by-step implementation guide
+- [Learning Notes](./LEARNINGS/) - Step-by-step implementation guide and agentic AI concepts
 - [Changelog](./CHANGELOG.md) - Version history
 
 ## License
