@@ -1,14 +1,18 @@
+import os
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.core.state import StudySessionState
-from agent.core.tool_executor import ToolExecutor
-from agent.utils.llm_client import get_llm_client
+import pytest  # noqa: E402
+
+from agent.core.state import StudySessionState  # noqa: E402
+from agent.core.tool_executor import ToolExecutor  # noqa: E402
+from agent.utils.llm_client import get_llm_client  # noqa: E402
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_state_updates():
     print("Testing State Updates After Tool Execution")
     print("=" * 60)
@@ -33,8 +37,8 @@ def test_state_updates():
         }
     }
     
-    tool_messages = executor.execute_tool_calls([tool_call_plan])
-    print(f"   ✓ Tool executed")
+    executor.execute_tool_calls([tool_call_plan])
+    print("   ✓ Tool executed")
     print(f"   Concepts in state: {list(state.concepts.keys())}")
     print(f"   Concepts planned: {state.concepts_planned}")
     print(f"   Total concepts: {len(state.concepts)}")
@@ -55,8 +59,8 @@ def test_state_updates():
         }
     }
     
-    tool_messages = executor.execute_tool_calls([tool_call_teach])
-    print(f"   ✓ Tool executed")
+    executor.execute_tool_calls([tool_call_teach])
+    print("   ✓ Tool executed")
     
     concept_progress = state.get_concept_progress(concept_to_teach)
     if concept_progress:
@@ -76,7 +80,7 @@ def test_state_updates():
     concept_progress = state.get_concept_progress(concept_to_teach)
     assert concept_progress is not None, "Concept progress not found"
     assert concept_progress.taught_at is not None, "Concept taught_at timestamp not set"
-    print(f"   ✓ State persists correctly")
+    print("   ✓ State persists correctly")
     
     print("\n✓ State update test passed!")
     return True

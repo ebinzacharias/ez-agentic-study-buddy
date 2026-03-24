@@ -78,7 +78,7 @@ class QuizWorkflow:
                 if concept_name in self.state.concepts:
                     self.state.mark_concept_quizzed(concept_name, float(average_score))
             elif average_score is not None and not concept_name:
-                concept_name_from_quiz = self.current_quiz.get("concept_name")
+                concept_name_from_quiz = self.current_quiz.get("concept_name") if self.current_quiz else None
                 if concept_name_from_quiz and concept_name_from_quiz in self.state.concepts:
                     self.state.mark_concept_quizzed(concept_name_from_quiz, float(average_score))
         
@@ -114,7 +114,7 @@ class QuizWorkflow:
             "quiz": quiz_result,
             "evaluation": evaluation_result,
             "concept_name": concept_name,
-            "concept_status": self.state.get_concept_progress(concept_name).status.value if concept_name in self.state.concepts else None,
+            "concept_status": cp.status.value if (cp := self.state.get_concept_progress(concept_name)) is not None else None,
         }
     
     def get_quiz_status(self, concept_name: str) -> Dict[str, Any]:

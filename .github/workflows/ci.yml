@@ -36,4 +36,16 @@ jobs:
       - name: Validate Python syntax
         run: |
           uv run python -m py_compile agent/**/*.py scripts/**/*.py || true
+      - name: Lint with ruff
+        run: |
+          uv pip install ruff
+          uv run ruff check .
+      - name: Type check with mypy
+        run: |
+          uv pip install mypy
+          uv run mypy .
+      - name: Run tests
+        run: |
+          uv pip install pytest
+          uv run pytest
 

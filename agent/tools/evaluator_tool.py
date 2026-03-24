@@ -55,7 +55,6 @@ def score_short_answer(learner_answer: str, correct_answer: str) -> float:
         return 0.7
     
     words_correct = normalize_text(correct_answer).split()
-    words_learner = learner_normalized.split()
     
     if not words_correct:
         return 0.0

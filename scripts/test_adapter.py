@@ -4,7 +4,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agent.tools.adapter_tool import adapt_difficulty
+from agent.tools.adapter_tool import adapt_difficulty  # noqa: E402
 
 
 def test_adapter_tool():
@@ -124,13 +124,13 @@ def test_adapter_tool():
             if test_case.get("expected_change") is False:
                 if not adaptation_applied and old_difficulty == new_difficulty:
                     if "expected_difficulty" not in test_case or new_difficulty == test_case["expected_difficulty"]:
-                        print(f"  ✓ Correctly maintained difficulty")
+                        print("  ✓ Correctly maintained difficulty")
                         passed += 1
                     else:
                         print(f"  ✗ Expected difficulty {test_case['expected_difficulty']}, got {new_difficulty}")
                         failed += 1
                 else:
-                    print(f"  ✗ Expected no change, but difficulty was changed")
+                    print("  ✗ Expected no change, but difficulty was changed")
                     failed += 1
             else:
                 if adaptation_applied:
@@ -147,10 +147,10 @@ def test_adapter_tool():
                         print(f"  ✗ Expected {expected_direction}, got {direction}")
                         failed += 1
                     else:
-                        print(f"  ✓ Correctly adapted difficulty")
+                        print("  ✓ Correctly adapted difficulty")
                         passed += 1
                 else:
-                    print(f"  ✗ Expected change, but difficulty was maintained")
+                    print("  ✗ Expected change, but difficulty was maintained")
                     failed += 1
         
         except Exception as e:
@@ -241,7 +241,7 @@ def test_edge_cases():
                     failed += 1
             else:
                 if "error" not in result:
-                    print(f"  ✓ No error (as expected)")
+                    print("  ✓ No error (as expected)")
                     passed += 1
                 else:
                     print(f"  ✗ Unexpected error: {result['error']}")

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from agent.core.retry_manager import RetryManager
 from agent.core.state import ConceptStatus, StudySessionState
@@ -71,7 +71,7 @@ class DecisionRules:
             retry_context = self.retry_manager.get_reteaching_context(retry_concept)
             
             current_retry_count = concept_progress.retry_count if concept_progress else 0
-            difficulty_level = concept_progress.difficulty_level.value if concept_progress else "beginner"
+            difficulty_level: str = concept_progress.difficulty_level.value if concept_progress else "beginner"
             
             tool_args = {
                 "concept_name": retry_concept,
@@ -81,9 +81,9 @@ class DecisionRules:
             
             if "error" not in retry_strategy:
                 if retry_strategy.get("retry_count"):
-                    tool_args["retry_attempt"] = retry_strategy.get("retry_count")
+                    tool_args["retry_attempt"] = str(retry_strategy.get("retry_count"))
                 if retry_strategy.get("strategy"):
-                    tool_args["alternative_strategy"] = retry_strategy.get("strategy")
+                    tool_args["alternative_strategy"] = str(retry_strategy.get("strategy"))
             
             strategy_name = retry_strategy.get("strategy", "standard") if "error" not in retry_strategy else "standard"
             

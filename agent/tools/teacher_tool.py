@@ -2,7 +2,6 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
-from agent.core.state import DifficultyLevel
 from agent.utils.llm_client import get_llm_client
 
 
@@ -128,7 +127,7 @@ Make sure the explanation:
 """
 
     response = llm.invoke(prompt)
-    content = response.content.strip()
+    content = str(response.content).strip()
     
     return content
 

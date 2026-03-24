@@ -57,7 +57,7 @@ Format:
 ..."""
 
     response = llm.invoke(prompt)
-    content = response.content.strip()
+    content = str(response.content).strip()
     
     concepts = []
     lines = content.split('\n')
