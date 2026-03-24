@@ -1,10 +1,10 @@
-import sys
+
 from pathlib import Path
+import sys
+from agent.utils.llm_client import get_llm_client
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.utils.llm_client import get_llm_client
 
 
 def test_llm_connection():

@@ -1,4 +1,3 @@
-import json
 import sys
 from pathlib import Path
 
@@ -46,7 +45,7 @@ def test_complete_quiz_workflow():
     print(f"   ✓ Quiz generated: {quiz_result.get('total_questions', 0)} questions")
     questions = quiz_result.get('questions', [])
     if questions:
-        print(f"   Questions:")
+        print("   Questions:")
         for q in questions:
             print(f"     Q{q.get('question_number', '?')}: {q.get('question_type', 'unknown')}")
     
@@ -73,7 +72,7 @@ def test_complete_quiz_workflow():
         print(f"   ✗ Failed to evaluate: {evaluation_result['error']}")
         return False
     
-    print(f"   ✓ Evaluation complete")
+    print("   ✓ Evaluation complete")
     print(f"   Total Questions: {evaluation_result.get('total_questions', 0)}")
     print(f"   Average Score: {evaluation_result.get('average_score', 0.0):.2f}")
     print(f"   Overall Percentage: {evaluation_result.get('overall_percentage', 0.0):.1f}%")
@@ -109,7 +108,7 @@ def test_complete_quiz_workflow():
     if "error" in complete_result:
         print(f"   ⚠ Complete flow had error: {complete_result['error']}")
     else:
-        print(f"   ✓ Complete flow executed successfully")
+        print("   ✓ Complete flow executed successfully")
         print(f"   Quiz Status: {complete_result.get('concept_status', 'unknown')}")
     
     print("\n7. Testing Retry Logic...")

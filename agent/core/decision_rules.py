@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from agent.core.retry_manager import RetryManager
 from agent.core.state import ConceptStatus, StudySessionState
