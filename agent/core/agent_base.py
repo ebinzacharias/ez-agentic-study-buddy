@@ -15,16 +15,20 @@ class AgentBase:
         """Receive a message (append to inbox)."""
         self.inbox.append(message)
 
-    def send(self, recipient: 'AgentBase', message: Dict[str, Any]):
-        """Send a message to another agent (append to their inbox)."""
-        recipient.receive({**message, 'from': self.name})
-        self.outbox.append({'to': recipient.name, **message})
+    def send(self, recipient_name: str, message: Dict[str, Any], agent_registry: Dict[str, 'AgentBase']):
+        """Send a message to another agent by name (append to their inbox)."""
+        recipient = agent_registry.get(recipient_name)
+        if recipient:
+            recipient.receive({**message, 'from': self.name})
+            self.outbox.append({'to': recipient_name, **message})
+        else:
+            print(f"[AgentBase] Warning: recipient '{recipient_name}' not found in registry.")
 
-    def step(self):
+    def step(self, agent_registry: Dict[str, 'AgentBase']):
         """Process one message from the inbox (to be implemented by subclasses)."""
         if self.inbox:
             message = self.inbox.pop(0)
-            self.handle_message(message)
+            self.handle_message(message, agent_registry)
 
     def handle_message(self, message: Dict[str, Any]):
         """Handle an incoming message (override in subclass)."""
