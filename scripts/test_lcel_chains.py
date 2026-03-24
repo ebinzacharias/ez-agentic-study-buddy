@@ -1,12 +1,16 @@
+import os
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+import pytest  # noqa: E402
+
 from agent.core.agent import StudyBuddyAgent  # noqa: E402
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_lcel_step():
     print("Testing LCEL Chain Integration")
     print("=" * 60)
