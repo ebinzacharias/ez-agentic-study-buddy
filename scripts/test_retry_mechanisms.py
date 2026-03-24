@@ -1,11 +1,10 @@
+from agent.core.retry_manager import RetryManager
+from agent.core.state import ConceptStatus, DifficultyLevel, StudySessionState
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.core.retry_manager import RetryManager
-from agent.core.state import ConceptStatus, DifficultyLevel, StudySessionState
 
 
 def test_retry_manager():
@@ -29,8 +28,8 @@ def test_retry_manager():
     print(f"  High score (0.7): {should_retry_high} (expected: False)")
     print(f"  No score: {should_retry_no_score} (expected: False)")
     
-    assert should_retry_low == True, "Should retry for low score"
-    assert should_retry_high == False, "Should not retry for high score"
+    assert should_retry_low, "Should retry for low score"
+    assert not should_retry_high, "Should not retry for high score"
     
     print("\n2. Testing mark_for_retry()")
     print("-" * 60)
@@ -51,17 +50,17 @@ def test_retry_manager():
     
     can_retry_1 = retry_manager.can_retry("Variables")
     print(f"  After 1 retry: {can_retry_1} (expected: True)")
-    assert can_retry_1 == True, "Should be able to retry after 1 attempt"
+    assert can_retry_1, "Should be able to retry after 1 attempt"
     
     retry_manager.mark_for_retry("Variables", quiz_score=0.4)
     can_retry_2 = retry_manager.can_retry("Variables")
     print(f"  After 2 retries: {can_retry_2} (expected: True)")
-    assert can_retry_2 == True, "Should be able to retry after 2 attempts"
+    assert can_retry_2, "Should be able to retry after 2 attempts"
     
     retry_manager.mark_for_retry("Variables", quiz_score=0.3)
     can_retry_3 = retry_manager.can_retry("Variables")
     print(f"  After 3 retries: {can_retry_3} (expected: False)")
-    assert can_retry_3 == False, "Should not be able to retry after 3 attempts"
+    assert not can_retry_3, "Should not be able to retry after 3 attempts"
     
     print("\n4. Testing get_retry_strategy()")
     print("-" * 60)
@@ -102,7 +101,7 @@ def test_retry_manager():
     
     should_adapt = retry_manager2.should_adapt_difficulty("Functions")
     print(f"  Should adapt after 3 retries: {should_adapt} (expected: True)")
-    assert should_adapt == True, "Should adapt difficulty after 3 retries"
+    assert should_adapt, "Should adapt difficulty after 3 retries"
     
     print("\n7. Testing max retries limit")
     print("-" * 60)

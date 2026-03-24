@@ -1,6 +1,5 @@
 from pathlib import Path
 import sys
-import traceback
 from agent.tools.quizzer_tool import generate_quiz
 
 project_root = Path(__file__).parent.parent

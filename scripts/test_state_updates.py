@@ -1,12 +1,11 @@
+from agent.core.state import StudySessionState
+from agent.core.tool_executor import ToolExecutor
+from agent.utils.llm_client import get_llm_client
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from agent.core.state import StudySessionState
-from agent.core.tool_executor import ToolExecutor
-from agent.utils.llm_client import get_llm_client
 
 
 def test_state_updates():
@@ -33,7 +32,7 @@ def test_state_updates():
         }
     }
     
-    tool_messages = executor.execute_tool_calls([tool_call_plan])
+    executor.execute_tool_calls([tool_call_plan])
     print("   ✓ Tool executed")
     print(f"   Concepts in state: {list(state.concepts.keys())}")
     print(f"   Concepts planned: {state.concepts_planned}")
@@ -55,7 +54,7 @@ def test_state_updates():
         }
     }
     
-    tool_messages = executor.execute_tool_calls([tool_call_teach])
+    executor.execute_tool_calls([tool_call_teach])
     print("   ✓ Tool executed")
     
     concept_progress = state.get_concept_progress(concept_to_teach)
