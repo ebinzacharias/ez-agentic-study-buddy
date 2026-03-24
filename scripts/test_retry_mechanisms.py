@@ -87,7 +87,7 @@ def test_retry_manager():
     retry_manager2.mark_for_retry("Functions", quiz_score=0.3)
     strategy_3 = retry_manager2.get_retry_strategy("Functions")
     print(f"  Strategy after 3 retries: {strategy_3['strategy']}")
-    print(f"  Approach: {strategy_3['approach']}")
+    print(f"  Approach: {strategy_3.get('approach', 'N/A')}")
     assert strategy_3['strategy'] == "adapt_difficulty", "Should use adapt_difficulty for retry 3"
     
     print("\n5. Testing get_reteaching_context()")

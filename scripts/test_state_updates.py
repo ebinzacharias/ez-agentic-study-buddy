@@ -1,14 +1,18 @@
+import os
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+import pytest  # noqa: E402
+
 from agent.core.state import StudySessionState  # noqa: E402
 from agent.core.tool_executor import ToolExecutor  # noqa: E402
 from agent.utils.llm_client import get_llm_client  # noqa: E402
 
 
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
 def test_state_updates():
     print("Testing State Updates After Tool Execution")
     print("=" * 60)
