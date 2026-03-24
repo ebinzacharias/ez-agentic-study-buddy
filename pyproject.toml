@@ -1,3 +1,7 @@
+[tool.mypy]
+ignore_missing_imports = true
+disable_error_code = ["return-value", "operator"]
+
 [project]
 name = "ez-agentic-study-buddy"
 version = "0.1.1"

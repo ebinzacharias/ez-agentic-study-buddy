@@ -8,8 +8,8 @@ class AgentBase:
     def __init__(self, name: str, state: Optional[Dict[str, Any]] = None):
         self.name = name
         self.state = state or {}
-        self.inbox = []  # List of incoming messages
-        self.outbox = []  # List of outgoing messages
+        self.inbox: list[Dict[str, Any]] = []  # List of incoming messages
+        self.outbox: list[Dict[str, Any]] = []  # List of outgoing messages
 
     def receive(self, message: Dict[str, Any]):
         """Receive a message (append to inbox)."""

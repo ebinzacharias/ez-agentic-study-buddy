@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 from langchain_core.tools import tool
 
@@ -11,7 +11,7 @@ def generate_quiz(
     difficulty_level: str = "beginner",
     num_questions: int = 3,
     question_types: str = "multiple_choice,short_answer",
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Generates a quiz to test understanding of a concept at an appropriate difficulty level.
     
@@ -125,7 +125,7 @@ Return the quiz in this EXACT JSON format:
 Return ONLY valid JSON, no additional text before or after."""
 
     response = llm.invoke(prompt)
-    content = response.content.strip()
+    content = str(response.content).strip()
     
     import json
     

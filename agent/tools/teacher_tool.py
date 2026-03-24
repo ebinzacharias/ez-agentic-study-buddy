@@ -127,7 +127,7 @@ Make sure the explanation:
 """
 
     response = llm.invoke(prompt)
-    content = response.content.strip()
+    content = str(response.content).strip()
     
     return content
 
