@@ -2,6 +2,10 @@
 ignore_missing_imports = true
 disable_error_code = ["return-value", "operator"]
 
+[tool.pytest.ini_options]
+testpaths = ["scripts"]
+pythonpath = ["."]
+
 [project]
 name = "ez-agentic-study-buddy"
 version = "0.1.1"
