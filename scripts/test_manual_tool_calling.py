@@ -80,7 +80,7 @@ Create a learning path by calling the plan_learning_path tool."""
         
         try:
             tool_result = tool_map[tool_name].invoke(tool_args)
-            print(f"✓ Tool executed successfully")
+            print("✓ Tool executed successfully")
             print(f"    Result: {len(tool_result)} concepts planned")
             
             tool_message = ToolMessage(
@@ -98,7 +98,7 @@ Create a learning path by calling the plan_learning_path tool."""
     
     print("\n6. Final Results:")
     print("=" * 60)
-    print(f"✓ LLM invoked with tool binding")
+    print("✓ LLM invoked with tool binding")
     print(f"✓ Tool calls extracted: {len(tool_calls)}")
     print(f"✓ Tools executed: {len(tool_messages)}")
     print(f"✓ ToolMessages created: {len(tool_messages)}")

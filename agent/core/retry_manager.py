@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from agent.core.state import ConceptProgress, ConceptStatus, DifficultyLevel, StudySessionState
+from agent.core.state import StudySessionState
 
 
 class RetryManager:

@@ -5,7 +5,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from agent.core.decision_rules import DecisionRules
-from agent.core.state import ConceptStatus, DifficultyLevel, StudySessionState
+from agent.core.state import DifficultyLevel, StudySessionState
 
 
 def test_decision_rules():
@@ -110,7 +110,7 @@ def test_decision_rules():
             print(f"  Reason: {reason}")
             
             if action == test_case["expected_action"]:
-                print(f"  ✓ Correct action")
+                print("  ✓ Correct action")
                 passed += 1
             else:
                 print(f"  ✗ Expected: {test_case['expected_action']}, Got: {action}")
