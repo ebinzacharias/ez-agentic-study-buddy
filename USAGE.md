@@ -1,8 +1,73 @@
 # Usage Guide
 
-## Quick Start
+## Web UI (Recommended)
 
-### Basic Usage
+The easiest way to use EZ Agentic Study Buddy is through the web interface.
+
+### Start the Backend
+
+```bash
+uv sync --extra web
+uv run uvicorn webapi.main:app --reload --port 8000
+```
+
+### Start the Frontend
+
+```bash
+cd webui
+npm install
+npm run dev
+```
+
+### Study Workflow
+
+1. **Upload** — Open [http://localhost:5173](http://localhost:5173) and drop a file (PDF, Markdown, plain text, or JSON).
+2. **Session Created** — A session is created automatically. The system suggests a topic from your content.
+3. **Plan** — Click "Plan" to generate a learning path of ordered concepts.
+4. **Teach** — Step through each concept. The Teacher generates grounded explanations from your material.
+5. **Quiz** — Take a multiple-choice quiz on each concept.
+6. **Evaluate** — Get instant feedback with scores and next-action recommendations.
+7. **Adapt** — Difficulty adjusts automatically based on your quiz performance.
+
+### Supported File Formats
+
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| Plain text | `.txt` | Split into sections by blank lines |
+| Markdown | `.md` | Split by headings (`#`, `##`, etc.) |
+| JSON | `.json` | Key-value pairs or nested objects |
+| PDF | `.pdf` | Requires `pymupdf` — install with `uv pip install pymupdf` |
+
+### API Usage (curl)
+
+```bash
+# Upload a file and create a session
+curl -X POST http://localhost:8000/session/from-upload \
+  -F "files=@my-notes.md"
+
+# Plan learning path
+curl -X POST http://localhost:8000/session/{SESSION_ID}/plan
+
+# Teach a concept
+curl -X POST http://localhost:8000/session/{SESSION_ID}/teach
+
+# Generate a quiz
+curl -X POST http://localhost:8000/session/{SESSION_ID}/quiz
+
+# Evaluate answers
+curl -X POST http://localhost:8000/session/{SESSION_ID}/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{"answers": {"q1": "B", "q2": "A"}}'
+
+# Get next recommended action
+curl http://localhost:8000/session/{SESSION_ID}/next-action
+```
+
+---
+
+## Programmatic Usage
+
+### Quick Start
 
 ```python
 from agent.core.agent import StudyBuddyAgent
@@ -242,24 +307,45 @@ with open("session_history.json", "w") as f:
 
 ## Testing
 
-### Run End-to-End Tests
+### Run All Tests
 
 ```bash
-uv run python scripts/test_end_to_end.py
+# Full suite (LLM-dependent tests require GROQ_API_KEY)
+uv run python -m pytest -q
+
+# Verbose output
+uv run python -m pytest -v
 ```
 
-### Run Specific Tests
+### Offline Tests (No API Key)
 
 ```bash
-# Test LCEL chains
-uv run python scripts/test_lcel_chains.py
-
-# Test retry mechanisms
-uv run python scripts/test_retry_mechanisms.py
-
-# Test decision rules
-uv run python scripts/test_decision_rules.py
+uv run python -m pytest scripts/test_decision_rules.py scripts/test_quizzer_schema_validation.py -q
 ```
+
+### Run Specific Test Categories
+
+```bash
+# Decision rules (offline)
+uv run python -m pytest scripts/test_decision_rules.py -v
+
+# Quiz schema validation (offline)
+uv run python -m pytest scripts/test_quizzer_schema_validation.py -v
+
+# End-to-end (requires GROQ_API_KEY)
+uv run python -m pytest scripts/test_end_to_end.py -v
+
+# LCEL chains
+uv run python -m pytest scripts/test_lcel_chains.py -v
+
+# Retry mechanisms
+uv run python -m pytest scripts/test_retry_mechanisms.py -v
+
+# Web API workflow interactions (requires fastapi extra)
+uv run python -m pytest scripts/test_agent_workflow_interactions.py -v
+```
+
+> **Note:** Tests that require `GROQ_API_KEY` or `fastapi` will skip automatically when those dependencies are unavailable.
 
 ## Troubleshooting
 
@@ -303,11 +389,18 @@ if decision.get("action") == "plan_learning_path":
 
 ## Examples
 
-See the `scripts/` directory for more examples:
-- `test_end_to_end.py`: Complete system testing
-- `test_planner.py`: Learning path planning
-- `test_teacher.py`: Concept teaching
-- `test_quizzer.py`: Quiz generation
-- `test_evaluator.py`: Answer evaluation
-- `test_retry_mechanisms.py`: Retry handling
+See the `scripts/` directory for test examples:
+
+| File | Description |
+|------|-------------|
+| `test_end_to_end.py` | Complete system flow |
+| `test_planner.py` | Learning path planning |
+| `test_teacher.py` | Concept teaching |
+| `test_quizzer.py` | Quiz generation |
+| `test_evaluator.py` | Answer evaluation |
+| `test_retry_mechanisms.py` | Retry handling |
+| `test_decision_rules.py` | Decision rule logic (offline) |
+| `test_quizzer_schema_validation.py` | Quiz schema validation (offline) |
+| `test_agent_workflow_interactions.py` | Web API workflow interactions |
+| `test_topic_suggestion.py` | Topic auto-suggestion |
 
