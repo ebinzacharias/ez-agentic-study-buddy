@@ -1,5 +1,7 @@
+import logging
 import os
 import tempfile
+import traceback
 import uuid
 from typing import Any
 
@@ -12,6 +14,9 @@ from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
 from agent.core.state import DifficultyLevel, StudySessionState
 from agent.tools.planner_tool import plan_learning_path
 from agent.tools.teacher_tool import teach_concept
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("webapi")
 
 app = FastAPI()
 
@@ -331,10 +336,13 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
             "concepts": concepts,
         }
     except Exception as e:
+        tb = traceback.format_exc()
+        logger.error("Plan endpoint error:\n%s", tb)
         return JSONResponse(
             status_code=500,
             content={
                 "error": str(e),
+                "traceback": tb,
                 "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
             },
         )
