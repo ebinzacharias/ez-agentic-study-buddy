@@ -193,3 +193,34 @@ footer {
   font-weight: 500;
 }
 .btn-secondary:hover { background: #d0d9f5; }
+
+/* Agent next-action recommendation banner */
+.next-action-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-top: 1.2em;
+  padding: 0.85em 1em;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+}
+.next-action-banner.next-action-complete {
+  background: #d3f9d8;
+  border-color: #8ce99a;
+}
+.next-action-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  flex: 1;
+}
+.next-action-icon { font-size: 1.3em; line-height: 1; }
+.next-action-reason { font-size: 0.93em; color: #3730a3; font-weight: 500; }
+.next-action-complete .next-action-reason { color: #1a6b2a; }
+.next-action-concept {
+  font-size: 0.88em;
+  color: #6b7280;
+  margin-top: 0.2em;
+}
