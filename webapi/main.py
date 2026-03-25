@@ -132,7 +132,7 @@ def _normalize_difficulty(level: str) -> DifficultyLevel:
     return DifficultyLevel.BEGINNER
 
 
-_TEMP_STEM_RE = re.compile(r"^tmp[a-z0-9]{6,}$", re.IGNORECASE)
+_TEMP_STEM_RE = re.compile(r"^tmp[a-z0-9_-]{5,}$", re.IGNORECASE)
 
 
 def _looks_like_temp_stem(s: str) -> bool:

@@ -44,7 +44,7 @@ def test_complete_quiz_workflow():
     
     if "error" in quiz_result:
         print(f"   ✗ Failed to generate quiz: {quiz_result['error']}")
-        return False
+        pytest.fail(f"Failed to generate quiz: {quiz_result['error']}")
     
     print(f"   ✓ Quiz generated: {quiz_result.get('total_questions', 0)} questions")
     questions = quiz_result.get('questions', [])
@@ -74,7 +74,7 @@ def test_complete_quiz_workflow():
     
     if "error" in evaluation_result:
         print(f"   ✗ Failed to evaluate: {evaluation_result['error']}")
-        return False
+        pytest.fail(f"Failed to evaluate answers: {evaluation_result['error']}")
     
     print("   ✓ Evaluation complete")
     print(f"   Total Questions: {evaluation_result.get('total_questions', 0)}")
@@ -120,7 +120,6 @@ def test_complete_quiz_workflow():
     print(f"   Can Retry: {can_retry}")
     
     print("\n✓ Complete quiz workflow test passed!")
-    return True
 
 
 if __name__ == "__main__":
