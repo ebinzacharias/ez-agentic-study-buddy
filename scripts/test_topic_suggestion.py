@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from webapi.main import _looks_like_temp_stem, _suggest_topic
+import pytest
+
+pytest.importorskip("fastapi", reason="fastapi not installed (web extras required)")
+
+from webapi.main import _looks_like_temp_stem, _suggest_topic  # noqa: E402
 
 
 def test_looks_like_temp_stem_handles_windows_style_tmp_names() -> None:

@@ -3,10 +3,14 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from fastapi.testclient import TestClient
+import pytest
 
-from agent.core.state import DifficultyLevel, StudySessionState
-from webapi import main as webmain
+pytest.importorskip("fastapi", reason="fastapi not installed (web extras required)")
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from agent.core.state import DifficultyLevel, StudySessionState  # noqa: E402
+from webapi import main as webmain  # noqa: E402
 
 
 def _seed_session(session_id: str = "test-session") -> str:
