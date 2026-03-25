@@ -374,7 +374,8 @@ export default function App() {
                     value={quizConcept}
                     onChange={(e) => setQuizConcept(e.target.value)}
                   >
-                    <option value="">Same as teach concept</option>
+                    <option value="">— Same as teach concept —</option>
+                    <option value={topic}>{topic} (entire document)</option>
                     {planResult.concepts.map((c) => (
                       <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
                     ))}
@@ -405,7 +406,20 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <div className="hint">Quiz any concept — independent of the learning path.</div>
+            <div className="row" style={{ marginTop: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => { setQuizConcept(topic); }}
+                disabled={!topic || loading}
+              >
+                Quiz entire document
+              </button>
+            </div>
+            <div className="hint">
+              Questions are grounded in your uploaded material.
+              Use <strong>Quiz entire document</strong> to quiz across all content.
+            </div>
           </div>
 
           {quizResult && (
