@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -8,6 +9,11 @@ sys.path.insert(0, str(project_root))
 
 from agent.core.agent import StudyBuddyAgent  # noqa: E402
 from agent.core.state import StudySessionState  # noqa: E402
+
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GROQ_API_KEY"),
+    reason="GROQ_API_KEY not set — skipping LLM-dependent tests",
+)
 
 
 def test_full_learning_flow():

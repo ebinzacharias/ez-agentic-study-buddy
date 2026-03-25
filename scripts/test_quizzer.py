@@ -1,10 +1,18 @@
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from agent.tools.quizzer_tool import generate_quiz  # noqa: E402
+
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GROQ_API_KEY"),
+    reason="GROQ_API_KEY not set — skipping LLM-dependent tests",
+)
 
 
 def test_quizzer():
@@ -62,13 +70,9 @@ def test_quizzer():
                 print("  ⚠ No questions generated")
             
         except Exception as e:
-            print(f"✗ Tool execution failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
+            pytest.fail(f"Tool execution failed: {e}")
     
     print("\n✓ Quizzer Tool test passed!")
-    return True
 
 
 if __name__ == "__main__":
