@@ -1,4 +1,12 @@
 ﻿import React, { useMemo, useState } from "react";
+import { fmtError, isSessionExpired } from "./api";
+import UploadStep from "./components/UploadStep";
+import MaterialPreview from "./components/MaterialPreview";
+import SessionControls from "./components/SessionControls";
+import PlanStep from "./components/PlanStep";
+import TeachStep from "./components/TeachStep";
+import QuizStep from "./components/QuizStep";
+import NextActionBanner from "./components/NextActionBanner";
 
 export default function App() {
   const apiBaseUrl = useMemo(
@@ -6,6 +14,7 @@ export default function App() {
     []
   );
 
+  // ── Session state ──────────────────────────────────────────────
   const [sessionId, setSessionId] = useState("");
   const [topic, setTopic] = useState("");
   const [suggestedTopic, setSuggestedTopic] = useState("");
@@ -23,34 +32,19 @@ export default function App() {
   const [teachContext, setTeachContext] = useState("");
   const [teachResult, setTeachResult] = useState(null);
 
-  // Quiz state
   const [quizConcept, setQuizConcept] = useState("");
   const [numQuestions, setNumQuestions] = useState(3);
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
 
-  // Agent recommendation
   const [nextAction, setNextAction] = useState(null);
 
+  // ── Helpers ────────────────────────────────────────────────────
   const resetErrors = () => setError("");
 
-  const fmtError = (data) => {
-    const code = data?.error_code;
-    const msg = data?.error || "Unknown error";
-    if (code === "session_expired") return `🔄 ${msg}`;
-    if (code === "invalid_quiz_format") return `🧩 ${msg}`;
-    if (code === "rate_limit") return `⏳ Rate limited — ${msg}`;
-    if (code === "timeout")    return `⌛ Timeout — ${msg}`;
-    if (code === "auth_error") return `🔑 Auth error — ${msg}`;
-    if (code === "llm_error")  return `🤖 LLM error — ${msg}`;
-    return msg;
-  };
-
   const handleApiError = (data) => {
-    if (data?.error_code === "session_expired") {
-      resetSession();
-    }
+    if (isSessionExpired(data)) resetSession();
     throw new Error(fmtError(data));
   };
 
@@ -72,14 +66,17 @@ export default function App() {
     resetErrors();
   };
 
+  const clearDownstream = (...keep) => {
+    if (!keep.includes("plan")) setPlanResult(null);
+    if (!keep.includes("teach")) setTeachResult(null);
+    if (!keep.includes("quiz")) { setQuizResult(null); setQuizAnswers({}); }
+    if (!keep.includes("eval")) setEvalResult(null);
+  };
+
+  // ── API actions ────────────────────────────────────────────────
   const handleFileChange = (e) => {
     setFile(e.target.files[0] || null);
-    setUploadResult(null);
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     resetErrors();
   };
 
@@ -88,12 +85,7 @@ export default function App() {
     if (!file) return;
     setLoading(true);
     resetErrors();
-    setUploadResult(null);
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     setSelectedConcept("");
     const formData = new FormData();
     formData.append("files", file);
@@ -121,11 +113,7 @@ export default function App() {
     if (!sessionId) { setError("Upload material first."); return; }
     setLoading(true);
     resetErrors();
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/plan`, {
         method: "POST",
@@ -149,10 +137,7 @@ export default function App() {
     if (!selectedConcept.trim()) { setError("Pick a concept to teach."); return; }
     setLoading(true);
     resetErrors();
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream("plan");
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/teach`, {
         method: "POST",
@@ -204,28 +189,6 @@ export default function App() {
     }
   };
 
-  const followNextAction = () => {
-    if (!nextAction) return;
-    const { action, concept } = nextAction;
-    if (action === "teach_concept" || action === "set_current_concept" || action === "add_concept") {
-      if (concept) setSelectedConcept(concept);
-      setTeachResult(null);
-      setQuizResult(null);
-      setQuizAnswers({});
-      setEvalResult(null);
-      setNextAction(null);
-    } else if (action === "generate_quiz") {
-      if (concept) setQuizConcept(concept);
-      setQuizResult(null);
-      setQuizAnswers({});
-      setEvalResult(null);
-      setNextAction(null);
-    } else if (action === "plan_learning_path") {
-      setNextAction(null);
-      runPlan();
-    }
-  };
-
   const runEvaluate = async () => {
     if (!quizResult) { setError("Generate a quiz first."); return; }
     setLoading(true);
@@ -255,314 +218,109 @@ export default function App() {
     }
   };
 
+  const followNextAction = () => {
+    if (!nextAction) return;
+    const { action, concept } = nextAction;
+    if (action === "teach_concept" || action === "set_current_concept" || action === "add_concept") {
+      if (concept) setSelectedConcept(concept);
+      setTeachResult(null);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+    } else if (action === "generate_quiz") {
+      if (concept) setQuizConcept(concept);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+    } else if (action === "plan_learning_path") {
+      setNextAction(null);
+      runPlan();
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="container">
       <h1>EZ-Agentic Study Buddy</h1>
       <div className="muted">API: {apiBaseUrl}</div>
 
-      {/* Step 1: Upload */}
       {!sessionId && (
-        <div className="card">
-          <form onSubmit={uploadAndCreateSession} className="upload-form">
-            <input
-              type="file"
-              accept=".txt,.md,.markdown,.pdf,.json"
-              onChange={handleFileChange}
-            />
-            <button type="submit" disabled={!file || loading}>
-              {loading ? "Working..." : "Upload & Start"}
-            </button>
-          </form>
-          <div className="hint">
-            Supported: TXT, MD, PDF, JSON. For PDFs, install <code>pymupdf</code> on the API server.
-          </div>
-        </div>
+        <UploadStep
+          file={file}
+          difficulty={difficulty}
+          topic={topic}
+          loading={loading}
+          onFileChange={handleFileChange}
+          onDifficultyChange={setDifficulty}
+          onTopicChange={setTopic}
+          onSubmit={uploadAndCreateSession}
+        />
       )}
 
       {error && <div className="error">{error}</div>}
 
-      {/* Step 2: Material preview */}
-      {uploadResult && (
-        <div className="result">
-          <h2>Material</h2>
-          {uploadResult.materials && (
-            <div className="hint">{uploadResult.materials.map((m) => m.filename).join(", ")}</div>
-          )}
-          <h3>Section Titles</h3>
-          <ul>
-            {uploadResult.section_titles.length === 0 && <li>(none found)</li>}
-            {uploadResult.section_titles.map((t, i) => <li key={i}>{t}</li>)}
-          </ul>
-          <h3>Content Preview</h3>
-          <pre className="preview">{uploadResult.preview}</pre>
-        </div>
-      )}
+      <MaterialPreview uploadResult={uploadResult} />
 
-      {/* Steps 3+: Session controls */}
       {sessionId && (
         <>
-          {/* Topic / Difficulty / Reset */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Topic (suggested)</label>
-                <input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g., Python Basics"
-                />
-              </div>
-              <div className="field">
-                <label>Difficulty</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={resetSession} disabled={loading}>New Upload</button>
-              </div>
-            </div>
-            <div className="pill">
-              Session: {sessionId}
-              {suggestedTopic ? <> &middot; Suggested: {suggestedTopic}</> : ""}
-            </div>
-          </div>
+          <SessionControls
+            sessionId={sessionId}
+            topic={topic}
+            suggestedTopic={suggestedTopic}
+            difficulty={difficulty}
+            loading={loading}
+            onTopicChange={setTopic}
+            onDifficultyChange={setDifficulty}
+            onReset={resetSession}
+          />
 
-          {/* Plan */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Max concepts</label>
-                <input
-                  type="number" min="1" max="25" value={maxConcepts}
-                  onChange={(e) => setMaxConcepts(Number(e.target.value) || 10)}
-                />
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={runPlan} disabled={!sessionId || loading}>
-                  Plan Learning Path
-                </button>
-              </div>
-            </div>
-            <div className="hint">
-              Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set.
-            </div>
-          </div>
+          <PlanStep
+            maxConcepts={maxConcepts}
+            planResult={planResult}
+            loading={loading}
+            disabled={!sessionId}
+            onMaxConceptsChange={setMaxConcepts}
+            onPlan={runPlan}
+          />
 
-          {planResult && (
-            <div className="result">
-              <h2>Learning Path</h2>
-              <ul>
-                {planResult.concepts?.map((c) => (
-                  <li key={`${c.order}-${c.concept_name}`}>{c.order}. {c.concept_name}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <TeachStep
+            selectedConcept={selectedConcept}
+            teachContext={teachContext}
+            teachResult={teachResult}
+            planResult={planResult}
+            loading={loading}
+            onConceptChange={setSelectedConcept}
+            onContextChange={setTeachContext}
+            onTeach={runTeach}
+          />
 
-          {/* Teach */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Concept</label>
-                {planResult ? (
-                  <select
-                    value={selectedConcept}
-                    onChange={(e) => setSelectedConcept(e.target.value)}
-                  >
-                    <option value="">Select a concept</option>
-                    {planResult.concepts.map((c) => (
-                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={selectedConcept}
-                    onChange={(e) => setSelectedConcept(e.target.value)}
-                    placeholder="e.g., LangGraph Nodes"
-                  />
-                )}
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={runTeach} disabled={!selectedConcept.trim() || loading}>
-                  Teach
-                </button>
-              </div>
-            </div>
-            <div className="field">
-              <label>Context (optional)</label>
-              <textarea
-                value={teachContext}
-                onChange={(e) => setTeachContext(e.target.value)}
-                placeholder="What do you already know? Where did you get stuck?"
-              />
-            </div>
-          </div>
+          <QuizStep
+            topic={topic}
+            quizConcept={quizConcept}
+            selectedConcept={selectedConcept}
+            numQuestions={numQuestions}
+            quizResult={quizResult}
+            quizAnswers={quizAnswers}
+            evalResult={evalResult}
+            planResult={planResult}
+            loading={loading}
+            onQuizConceptChange={setQuizConcept}
+            onNumQuestionsChange={setNumQuestions}
+            onAnswerChange={(qNum, opt) =>
+              setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
+            }
+            onGenerateQuiz={runQuiz}
+            onEvaluate={runEvaluate}
+            onSetQuizConcept={setQuizConcept}
+          />
 
-          {teachResult && (
-            <div className="result">
-              <h2>Teaching: {teachResult.concept_name}</h2>
-              <pre className="preview">{teachResult.explanation}</pre>
-            </div>
-          )}
-
-          {/* Quiz */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Quiz concept</label>
-                {planResult ? (
-                  <select
-                    value={quizConcept}
-                    onChange={(e) => setQuizConcept(e.target.value)}
-                  >
-                    <option value="">— Same as teach concept —</option>
-                    <option value={topic}>{topic} (entire document)</option>
-                    {planResult.concepts.map((c) => (
-                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={quizConcept}
-                    onChange={(e) => setQuizConcept(e.target.value)}
-                    placeholder={selectedConcept || "e.g., LangGraph Nodes"}
-                  />
-                )}
-              </div>
-              <div className="field">
-                <label>Questions</label>
-                <input
-                  type="number" min="1" max="10" value={numQuestions}
-                  onChange={(e) => setNumQuestions(Number(e.target.value) || 3)}
-                />
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button
-                  type="button"
-                  onClick={runQuiz}
-                  disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
-                >
-                  Generate Quiz
-                </button>
-              </div>
-            </div>
-            <div className="row" style={{ marginTop: "0.5rem" }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => { setQuizConcept(topic); }}
-                disabled={!topic || loading}
-              >
-                Quiz entire document
-              </button>
-            </div>
-            <div className="hint">
-              Questions are grounded in your uploaded material.
-              Use <strong>Quiz entire document</strong> to quiz across all content.
-            </div>
-          </div>
-
-          {quizResult && (
-            <div className="result">
-              <h2>Quiz: {quizResult.concept_name}</h2>
-              {quizResult.questions?.map((q) => (
-                <div key={q.question_number} className="quiz-question">
-                  <p><strong>Q{q.question_number}.</strong> {q.question}</p>
-                  {q.options ? (
-                    <div className="quiz-options">
-                      {q.options.map((opt, i) => (
-                        <label key={i} className="quiz-option">
-                          <input
-                            type="radio"
-                            name={`q${q.question_number}`}
-                            value={opt}
-                            checked={quizAnswers[q.question_number] === opt}
-                            onChange={() => setQuizAnswers((a) => ({ ...a, [q.question_number]: opt }))}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="muted" style={{fontSize:"0.85em"}}>No options available for this question.</p>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={runEvaluate}
-                disabled={loading}
-                style={{ marginTop: "1rem" }}
-              >
-                {loading ? "Evaluating..." : "Submit & Evaluate"}
-              </button>
-            </div>
-          )}
-
-          {/* Evaluation Results */}
-          {evalResult && (
-            <div className="result">
-              <h2>Results &mdash; {evalResult.overall_percentage}%</h2>
-              <div className="score-bar">
-                <div
-                  className="score-fill"
-                  style={{ width: `${evalResult.overall_percentage}%` }}
-                />
-              </div>
-              <p className="muted">
-                {evalResult.questions_evaluated} / {evalResult.total_questions} answered &middot;{" "}
-                Score: {evalResult.total_score} / {evalResult.total_questions}
-              </p>
-              {evalResult.scores?.map((s) => {
-                const q = quizResult?.questions?.find((qq) => qq.question_number === s.question_number);
-                return (
-                  <div key={s.question_number} className={`eval-item ${s.is_correct ? "correct" : "incorrect"}`}>
-                    <strong>Q{s.question_number}</strong> &mdash; {s.feedback} ({Math.round(s.score * 100)}%)
-                    {!s.is_correct && q?.correct_answer && (
-                      <div className="correct-answer">Correct answer: <em>{q.correct_answer}</em></div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Agent recommendation banner */}
-          {nextAction && nextAction.action !== "session_complete" && (
-            <div className="next-action-banner">
-              <div className="next-action-body">
-                <span className="next-action-icon">&#x1F916;</span>
-                <div>
-                  <div className="next-action-reason">{nextAction.reason}</div>
-                  {nextAction.concept && (
-                    <div className="next-action-concept">{nextAction.concept}</div>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={followNextAction}
-                disabled={loading}
-              >
-                {nextAction.label} &rarr;
-              </button>
-            </div>
-          )}
-
-          {nextAction && nextAction.action === "session_complete" && (
-            <div className="next-action-banner next-action-complete">
-              <span className="next-action-icon">&#x1F3C6;</span>
-              <div className="next-action-reason">{nextAction.reason || "All concepts mastered! Great work."}</div>
-            </div>
-          )}
+          <NextActionBanner
+            nextAction={nextAction}
+            loading={loading}
+            onFollow={followNextAction}
+          />
         </>
       )}
 
