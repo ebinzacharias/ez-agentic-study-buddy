@@ -130,7 +130,6 @@ def test_retry_manager():
     assert "Functions" in exceeding, "Functions should be in exceeding list"
     
     print("\n✓ All retry mechanism tests passed!")
-    return True
 
 
 if __name__ == "__main__":
