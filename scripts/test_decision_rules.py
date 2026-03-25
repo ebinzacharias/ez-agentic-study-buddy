@@ -128,13 +128,11 @@ def test_decision_rules():
     
     print("\n" + "=" * 60)
     print(f"Results: {passed} passed, {failed} failed")
-    
     if failed == 0:
         print("✓ All decision rule tests passed!")
-        return True
     else:
         print("✗ Some tests failed")
-        return False
+    assert failed == 0
 
 
 if __name__ == "__main__":
