@@ -12,6 +12,7 @@ def teach_concept(
     context: str = "",
     retry_attempt: Optional[int] = None,
     alternative_strategy: Optional[str] = None,
+    source_material: str = "",
 ) -> str:
     """
     Generates a clear, structured explanation of a concept at an appropriate difficulty level.
@@ -20,6 +21,9 @@ def teach_concept(
     the learner's current difficulty level. It adapts vocabulary, examples, depth,
     and complexity based on the difficulty setting. Supports retry attempts with
     alternative teaching strategies.
+
+    When source_material is provided (from user-uploaded content), the explanation
+    is grounded in the actual material the learner is studying.
     
     Args:
         concept_name: The name of the concept to teach (e.g., "Variables and Data Types", "Functions")
@@ -27,6 +31,8 @@ def teach_concept(
         context: Optional context about what the learner already knows or what concepts were taught before
         retry_attempt: Optional retry attempt number (1, 2, 3). If provided, uses alternative teaching strategies.
         alternative_strategy: Optional strategy name ("simplify_explanation", "alternative_approach"). If provided, uses specific alternative approach.
+        source_material: Optional text from user-uploaded study materials.
+            When provided, the teaching content is based on this material.
     
     Returns:
         A formatted teaching explanation string containing:
@@ -66,6 +72,17 @@ def teach_concept(
     }
     
     guide = difficulty_guide.get(difficulty_level.lower(), difficulty_guide["beginner"])
+
+    material_block = ""
+    if source_material.strip():
+        material_block = f"""
+--- BEGIN USER-UPLOADED STUDY MATERIAL ---
+{source_material[:3000]}
+--- END USER-UPLOADED STUDY MATERIAL ---
+
+IMPORTANT: Base your explanation primarily on the study material above.
+Use the material's own examples, terminology, and structure where possible.
+"""
     
     retry_instructions = ""
     if retry_attempt is not None:
@@ -111,6 +128,7 @@ Difficulty Level Guidelines:
 - Technical Terms: {guide['technical_terms']}
 
 {f'Context: {context}' if context else ''}
+{material_block}
 {retry_instructions}
 
 Structure your explanation as follows:
