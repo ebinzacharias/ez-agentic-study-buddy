@@ -39,6 +39,7 @@ export default function App() {
     const code = data?.error_code;
     const msg = data?.error || "Unknown error";
     if (code === "session_expired") return `🔄 ${msg}`;
+    if (code === "invalid_quiz_format") return `🧩 ${msg}`;
     if (code === "rate_limit") return `⏳ Rate limited — ${msg}`;
     if (code === "timeout")    return `⌛ Timeout — ${msg}`;
     if (code === "auth_error") return `🔑 Auth error — ${msg}`;

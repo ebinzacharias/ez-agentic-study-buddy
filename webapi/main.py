@@ -89,6 +89,7 @@ def _get_next_action(state: StudySessionState) -> dict[str, Any]:
 _RATE_LIMIT_HINTS = ("rate limit", "ratelimit", "429", "too many requests")
 _TIMEOUT_HINTS = ("timeout", "timed out", "connection")
 _AUTH_HINTS = ("api key", "authentication", "unauthorized", "401", "403")
+_QUIZ_FORMAT_HINTS = ("invalid_quiz_format", "valid multiple-choice questions")
 
 
 def _classify_error(exc: Exception) -> tuple[str, str]:
@@ -100,6 +101,8 @@ def _classify_error(exc: Exception) -> tuple[str, str]:
         return "timeout", "The request timed out. Check your network/proxy and retry."
     if any(s in msg for s in _AUTH_HINTS):
         return "auth_error", "API key error. Ensure GROQ_API_KEY is set correctly in .env."
+    if any(s in msg for s in _QUIZ_FORMAT_HINTS):
+        return "invalid_quiz_format", "Could not generate valid multiple-choice options. Please try again."
     return "llm_error", str(exc)
 
 
