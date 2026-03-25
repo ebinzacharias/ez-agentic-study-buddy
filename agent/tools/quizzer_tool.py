@@ -10,7 +10,7 @@ def generate_quiz(
     concept_name: str,
     difficulty_level: str = "beginner",
     num_questions: int = 3,
-    question_types: str = "multiple_choice,short_answer",
+    question_types: str = "multiple_choice",
     source_material: str = "",
 ) -> Dict[str, Any]:
     """
@@ -21,7 +21,7 @@ def generate_quiz(
         concept_name: The concept to quiz on. Use the document topic for a full-document quiz.
         difficulty_level: "beginner", "intermediate", or "advanced"
         num_questions: Number of questions to generate (default: 3)
-        question_types: Comma-separated question types (e.g. "multiple_choice,short_answer")
+        question_types: Comma-separated question types (currently only "multiple_choice" supported)
         source_material: Optional text from uploaded study material. When provided, all
             questions MUST be grounded in this content, not general knowledge.
     """
@@ -46,7 +46,6 @@ def generate_quiz(
     }
     
     guide = difficulty_guide.get(difficulty_level.lower(), difficulty_guide["beginner"])
-    types_list = [t.strip() for t in question_types.split(",")]
 
     material_block = ""
     if source_material.strip():
@@ -67,15 +66,14 @@ Difficulty Level Guidelines:
 - Depth: {guide['depth']}
 - Examples: {guide['examples']}
 
-Question Types to Include: {', '.join(types_list)}
+Question Types to Include: multiple_choice
 
 Requirements:
 - Each question should test understanding of {concept_name}
 - Questions should be appropriate for {difficulty_level} level
-- Include a mix of question types if multiple types specified
-- For multiple choice questions, provide 4 options as full text strings (NOT letters like A/B/C/D)
+- Every question MUST be multiple_choice
+- For every multiple choice question, provide exactly 4 options as full text strings (NOT letters like A/B/C/D)
 - The correct_answer field MUST be the FULL option text (e.g. "Generating Human-Like Text"), NOT a letter
-- For short answer questions, provide a clear, concise correct answer
 - Include brief explanation for each answer
 
 Return the quiz in this EXACT JSON format:
@@ -93,10 +91,10 @@ Return the quiz in this EXACT JSON format:
         }},
         {{
             "question_number": 2,
-            "question_type": "short_answer",
+            "question_type": "multiple_choice",
             "question": "Question text here?",
-            "options": null,
-            "correct_answer": "Correct answer here",
+            "options": ["Full text of option 1", "Full text of option 2", "Full text of option 3", "Full text of option 4"],
+            "correct_answer": "Full text of option 2",
             "explanation": "Brief explanation here"
         }}
     ],
@@ -105,6 +103,43 @@ Return the quiz in this EXACT JSON format:
 
 IMPORTANT: correct_answer for multiple_choice MUST be the exact full text of one of the options, never a letter.
 Return ONLY valid JSON, no additional text before or after."""
+
+    def _extract_valid_mc_questions(raw: str) -> list[dict[str, Any]]:
+        import json
+
+        json_start = raw.find("{")
+        json_end = raw.rfind("}") + 1
+        if json_start == -1 or json_end <= json_start:
+            return []
+        parsed = json.loads(raw[json_start:json_end])
+        questions = parsed.get("questions") or []
+        valid_questions: list[dict[str, Any]] = []
+
+        for question in questions:
+            options = question.get("options")
+            correct_answer = question.get("correct_answer")
+            if question.get("question_type") != "multiple_choice":
+                continue
+            if not isinstance(options, list) or len(options) != 4:
+                continue
+            if any(not isinstance(option, str) or not option.strip() for option in options):
+                continue
+            normalized_options = [option.strip() for option in options]
+            if not isinstance(correct_answer, str) or correct_answer.strip() not in normalized_options:
+                continue
+
+            valid_questions.append(
+                {
+                    "question_number": len(valid_questions) + 1,
+                    "question_type": "multiple_choice",
+                    "question": str(question.get("question", "")).strip(),
+                    "options": normalized_options,
+                    "correct_answer": correct_answer.strip(),
+                    "explanation": str(question.get("explanation", "")).strip(),
+                }
+            )
+
+        return valid_questions
 
     try:
         response = call_with_retry(llm.invoke, prompt)
@@ -121,63 +156,48 @@ Return ONLY valid JSON, no additional text before or after."""
         }
 
     content = str(response.content).strip()
+    last_raw = content
+    valid_questions = _extract_valid_mc_questions(content)
 
-    import json
+    if len(valid_questions) < num_questions:
+        # Try up to two stricter regeneration attempts if model returned invalid question shapes
+        strict_prompt = (
+            prompt
+            + "\n\nCRITICAL VALIDATION RULES:"
+            + "\n- Output ONLY multiple_choice questions"
+            + "\n- Each question MUST include exactly 4 non-empty string options"
+            + "\n- correct_answer MUST exactly match one option"
+            + "\n- Do not output null options"
+        )
+        for _ in range(2):
+            try:
+                retry_response = call_with_retry(llm.invoke, strict_prompt, max_attempts=2)
+                retry_content = str(retry_response.content).strip()
+                last_raw = retry_content
+                retry_questions = _extract_valid_mc_questions(retry_content)
+                if len(retry_questions) >= len(valid_questions):
+                    valid_questions = retry_questions
+                if len(valid_questions) >= num_questions:
+                    break
+            except Exception:
+                break
 
-    json_start = content.find("{")
-    json_end = content.rfind("}") + 1
+    if valid_questions:
+        final_questions = valid_questions[:num_questions]
+        return {
+            "concept_name": concept_name,
+            "difficulty_level": difficulty_level,
+            "questions": final_questions,
+            "total_questions": len(final_questions),
+        }
 
-    if json_start != -1 and json_end > json_start:
-        json_content = content[json_start:json_end]
-        try:
-            quiz_data = json.loads(json_content)
-            # Strip MC questions that came back without options (LLM hallucination)
-            questions = quiz_data.get("questions") or []
-            valid_questions = [
-                q for q in questions
-                if q.get("question_type") != "multiple_choice" or (
-                    isinstance(q.get("options"), list) and len(q["options"]) >= 2
-                )
-            ]
-            if not valid_questions and questions:
-                # All questions were invalid — retry once with a stricter prompt nudge
-                try:
-                    retry_prompt = prompt + "\n\nCRITICAL: Every question MUST include an \"options\" array with exactly 4 strings. No nulls."
-                    retry_response = call_with_retry(llm.invoke, retry_prompt, max_attempts=2)
-                    retry_content = str(retry_response.content).strip()
-                    rs = retry_content.find("{")
-                    re_ = retry_content.rfind("}") + 1
-                    if rs != -1 and re_ > rs:
-                        retry_data = json.loads(retry_content[rs:re_])
-                        retry_qs = [
-                            q for q in (retry_data.get("questions") or [])
-                            if isinstance(q.get("options"), list) and len(q["options"]) >= 2
-                        ]
-                        if retry_qs:
-                            retry_data["questions"] = retry_qs
-                            retry_data["total_questions"] = len(retry_qs)
-                            return retry_data
-                except Exception:
-                    pass
-            quiz_data["questions"] = valid_questions
-            quiz_data["total_questions"] = len(valid_questions)
-            return quiz_data
-        except json.JSONDecodeError as e:
-            return {
-                "concept_name": concept_name,
-                "difficulty_level": difficulty_level,
-                "questions": [],
-                "total_questions": 0,
-                "error": f"Failed to parse JSON: {str(e)}",
-                "raw_response": content[:500],
-            }
-    
     return {
         "concept_name": concept_name,
         "difficulty_level": difficulty_level,
         "questions": [],
         "total_questions": 0,
-        "error": "No valid JSON found in response",
-        "raw_response": content[:500],
+        "error": "Failed to generate valid multiple-choice questions with options.",
+        "error_code": "invalid_quiz_format",
+        "raw_response": last_raw[:500],
     }
 
