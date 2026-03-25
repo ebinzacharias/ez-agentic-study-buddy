@@ -421,6 +421,7 @@ def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
                 "difficulty_level": req.difficulty_level,
                 "num_questions": req.num_questions,
                 "question_types": req.question_types,
+                "source_material": state.get_content_context(max_chars=4000) if state.has_loaded_content() else "",
             }
         )
         return {"session_id": session_id, **quiz}
