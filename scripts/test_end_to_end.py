@@ -1,11 +1,19 @@
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from agent.core.agent import StudyBuddyAgent  # noqa: E402
 from agent.core.state import StudySessionState  # noqa: E402
+
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GROQ_API_KEY"),
+    reason="GROQ_API_KEY not set — skipping LLM-dependent tests",
+)
 
 
 def test_full_learning_flow():
@@ -54,13 +62,9 @@ def test_full_learning_flow():
         print(f"  Average score: {agent.state.get_average_score() or 0.0:.2f}")
         
         print("\n✓ Full learning flow test completed")
-        return True
     
     except Exception as e:
-        print(f"\n✗ Full learning flow test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Full learning flow test failed: {e}")
 
 
 def test_edge_case_empty_topic():
@@ -70,14 +74,11 @@ def test_edge_case_empty_topic():
     
     try:
         StudyBuddyAgent(topic="")
-        print("✗ Should have raised ValueError for empty topic")
-        return False
+        pytest.fail("Should have raised ValueError for empty topic")
     except ValueError as e:
         print(f"✓ Correctly raised ValueError: {e}")
-        return True
     except Exception as e:
-        print(f"✗ Unexpected exception: {e}")
-        return False
+        pytest.fail(f"Unexpected exception: {e}")
 
 
 def test_edge_case_none_topic():
@@ -87,14 +88,11 @@ def test_edge_case_none_topic():
     
     try:
         StudyBuddyAgent(topic=None)
-        print("✗ Should have raised ValueError for None topic")
-        return False
+        pytest.fail("Should have raised ValueError for None topic")
     except ValueError as e:
         print(f"✓ Correctly raised ValueError: {e}")
-        return True
     except Exception as e:
-        print(f"✗ Unexpected exception: {e}")
-        return False
+        pytest.fail(f"Unexpected exception: {e}")
 
 
 def test_edge_case_max_iterations():
@@ -114,22 +112,15 @@ def test_edge_case_max_iterations():
         if agent.iteration_count >= 2:
             print(f"✓ Max iterations respected: {agent.iteration_count} >= 2")
         else:
-            print(f"✗ Max iterations not respected: {agent.iteration_count} < 2")
-            return False
+            pytest.fail(f"Max iterations not respected: {agent.iteration_count} < 2")
         
         if agent.is_complete():
             print("✓ is_complete() returns True after max iterations")
         else:
-            print("✗ is_complete() should return True after max iterations")
-            return False
-        
-        return True
+            pytest.fail("is_complete() should return True after max iterations")
     
     except Exception as e:
-        print(f"✗ Max iterations test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Max iterations test failed: {e}")
 
 
 def test_edge_case_no_concepts():
@@ -149,16 +140,10 @@ def test_edge_case_no_concepts():
         if action == "plan_learning_path":
             print("✓ Correctly attempts to plan learning path when no concepts")
         else:
-            print(f"✗ Expected 'plan_learning_path', got '{action}'")
-            return False
-        
-        return True
+            pytest.fail(f"Expected 'plan_learning_path', got '{action}'")
     
     except Exception as e:
-        print(f"✗ No concepts test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"No concepts test failed: {e}")
 
 
 def test_edge_case_invalid_state():
@@ -170,40 +155,23 @@ def test_edge_case_invalid_state():
         state = StudySessionState(session_id="test", topic="Test")
         
         progress = state.get_concept_progress("NonExistentConcept")
-        if progress is None:
-            print("✓ get_concept_progress returns None for non-existent concept")
-        else:
-            print("✗ get_concept_progress should return None for non-existent concept")
-            return False
+        assert progress is None, f"get_concept_progress should return None, got: {progress}"
+        print("✓ get_concept_progress returns None for non-existent concept")
         
         taught = state.get_taught_concepts()
-        if taught == []:
-            print("✓ get_taught_concepts returns empty list for new state")
-        else:
-            print(f"✗ get_taught_concepts should return empty list, got: {taught}")
-            return False
+        assert taught == [], f"get_taught_concepts should return empty list, got: {taught}"
+        print("✓ get_taught_concepts returns empty list for new state")
         
         progress_pct = state.get_progress_percentage()
-        if progress_pct == 0.0:
-            print(f"✓ get_progress_percentage returns 0.0 for new state: {progress_pct}")
-        else:
-            print(f"✗ get_progress_percentage should return 0.0, got: {progress_pct}")
-            return False
+        assert progress_pct == 0.0, f"get_progress_percentage should return 0.0, got: {progress_pct}"
+        print(f"✓ get_progress_percentage returns 0.0 for new state: {progress_pct}")
         
         avg_score = state.get_average_score()
-        if avg_score is None:
-            print("✓ get_average_score returns None for new state")
-        else:
-            print(f"✗ get_average_score should return None, got: {avg_score}")
-            return False
-        
-        return True
+        assert avg_score is None, f"get_average_score should return None, got: {avg_score}"
+        print("✓ get_average_score returns None for new state")
     
     except Exception as e:
-        print(f"✗ Invalid state test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Invalid state test failed: {e}")
 
 
 def test_error_handling():
@@ -222,22 +190,13 @@ def test_error_handling():
         
         if not action_result.get("success"):
             error = action_result.get("error", "")
-            if "Unknown action" in error:
-                print(f"✓ Correctly handles unknown action: {error}")
-            else:
-                print(f"✗ Expected 'Unknown action' error, got: {error}")
-                return False
+            assert "Unknown action" in error, f"Expected 'Unknown action' error, got: {error}"
+            print(f"✓ Correctly handles unknown action: {error}")
         else:
-            print("✗ Should have failed for unknown action")
-            return False
-        
-        return True
+            pytest.fail("Should have failed for unknown action")
     
     except Exception as e:
-        print(f"✗ Error handling test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        pytest.fail(f"Error handling test failed: {e}")
 
 
 def test_robustness():
@@ -284,7 +243,8 @@ def test_robustness():
             failed += 1
     
     print(f"\n  Robustness: {passed} passed, {failed} failed")
-    return failed == 0
+    if failed:
+        pytest.fail(f"{failed} robustness case(s) failed")
 
 
 def run_all_tests():
