@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from langchain_core.tools import tool
 
-from agent.utils.llm_client import get_llm_client
+from agent.utils.llm_client import call_with_retry, get_llm_client
 
 
 @tool
@@ -106,7 +106,20 @@ Return the quiz in this EXACT JSON format:
 IMPORTANT: correct_answer for multiple_choice MUST be the exact full text of one of the options, never a letter.
 Return ONLY valid JSON, no additional text before or after."""
 
-    response = llm.invoke(prompt)
+    try:
+        response = call_with_retry(llm.invoke, prompt)
+    except Exception as exc:
+        error_msg = str(exc)
+        error_code = "rate_limit" if any(s in error_msg.lower() for s in ("rate limit", "429", "ratelimit")) else "llm_error"
+        return {
+            "concept_name": concept_name,
+            "difficulty_level": difficulty_level,
+            "questions": [],
+            "total_questions": 0,
+            "error": error_msg,
+            "error_code": error_code,
+        }
+
     content = str(response.content).strip()
     
     import json
