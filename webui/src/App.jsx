@@ -30,6 +30,9 @@ export default function App() {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
 
+  // Agent recommendation
+  const [nextAction, setNextAction] = useState(null);
+
   const resetErrors = () => setError("");
 
   const resetSession = () => {
@@ -46,6 +49,7 @@ export default function App() {
     setQuizResult(null);
     setQuizAnswers({});
     setEvalResult(null);
+    setNextAction(null);
     resetErrors();
   };
 
@@ -143,6 +147,7 @@ export default function App() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Teach failed");
       setTeachResult(data);
+      setNextAction(data.next_action || null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -180,6 +185,28 @@ export default function App() {
     }
   };
 
+  const followNextAction = () => {
+    if (!nextAction) return;
+    const { action, concept } = nextAction;
+    if (action === "teach_concept" || action === "set_current_concept" || action === "add_concept") {
+      if (concept) setSelectedConcept(concept);
+      setTeachResult(null);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+    } else if (action === "generate_quiz") {
+      if (concept) setQuizConcept(concept);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+    } else if (action === "plan_learning_path") {
+      setNextAction(null);
+      runPlan();
+    }
+  };
+
   const runEvaluate = async () => {
     if (!quizResult) { setError("Generate a quiz first."); return; }
     setLoading(true);
@@ -201,6 +228,7 @@ export default function App() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Evaluation failed");
       setEvalResult(data);
+      setNextAction(data.next_action || null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -280,7 +308,7 @@ export default function App() {
             </div>
             <div className="pill">
               Session: {sessionId}
-              {suggestedTopic ? ` Â· Suggested: ${suggestedTopic}` : ""}
+              {suggestedTopic ? <> &middot; Suggested: {suggestedTopic}</> : ""}
             </div>
           </div>
 
@@ -302,7 +330,7 @@ export default function App() {
               </div>
             </div>
             <div className="hint">
-              Uses an LLM â€” ensure <code>GROQ_API_KEY</code> is set.
+              Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set.
             </div>
           </div>
 
@@ -489,6 +517,36 @@ export default function App() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Agent recommendation banner */}
+          {nextAction && nextAction.action !== "session_complete" && (
+            <div className="next-action-banner">
+              <div className="next-action-body">
+                <span className="next-action-icon">&#x1F916;</span>
+                <div>
+                  <div className="next-action-reason">{nextAction.reason}</div>
+                  {nextAction.concept && (
+                    <div className="next-action-concept">{nextAction.concept}</div>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={followNextAction}
+                disabled={loading}
+              >
+                {nextAction.label} &rarr;
+              </button>
+            </div>
+          )}
+
+          {nextAction && nextAction.action === "session_complete" && (
+            <div className="next-action-banner next-action-complete">
+              <span className="next-action-icon">&#x1F3C6;</span>
+              <div className="next-action-reason">{nextAction.reason || "All concepts mastered! Great work."}</div>
             </div>
           )}
         </>
