@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -40,13 +42,9 @@ def test_teacher():
             print()
             
         except Exception as e:
-            print(f"✗ Tool execution failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
+            pytest.fail(f"Tool execution failed: {e}")
     
     print("✓ Teacher Tool test passed!")
-    return True
 
 
 if __name__ == "__main__":
