@@ -24,6 +24,7 @@ export default function App() {
   const [teachResult, setTeachResult] = useState(null);
 
   // Quiz state
+  const [quizConcept, setQuizConcept] = useState("");
   const [numQuestions, setNumQuestions] = useState(3);
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
@@ -41,6 +42,7 @@ export default function App() {
     setTeachResult(null);
     setSelectedConcept("");
     setTeachContext("");
+    setQuizConcept("");
     setQuizResult(null);
     setQuizAnswers({});
     setEvalResult(null);
@@ -150,7 +152,8 @@ export default function App() {
 
   const runQuiz = async () => {
     if (!sessionId) { setError("Upload material first."); return; }
-    if (!selectedConcept.trim()) { setError("Pick a concept to quiz on."); return; }
+    const conceptToQuiz = quizConcept.trim() || selectedConcept.trim();
+    if (!conceptToQuiz) { setError("Enter a concept to quiz on."); return; }
     setLoading(true);
     resetErrors();
     setQuizResult(null);
@@ -161,7 +164,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          concept_name: selectedConcept,
+          concept_name: conceptToQuiz,
           difficulty_level: difficulty,
           num_questions: numQuestions,
           question_types: "multiple_choice,short_answer",
@@ -319,20 +322,27 @@ export default function App() {
             <div className="row">
               <div className="field">
                 <label>Concept</label>
-                <select
-                  value={selectedConcept}
-                  onChange={(e) => setSelectedConcept(e.target.value)}
-                  disabled={!planResult}
-                >
-                  <option value="">Select a concept</option>
-                  {(planResult?.concepts || []).map((c) => (
-                    <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
-                  ))}
-                </select>
+                {planResult ? (
+                  <select
+                    value={selectedConcept}
+                    onChange={(e) => setSelectedConcept(e.target.value)}
+                  >
+                    <option value="">Select a concept</option>
+                    {planResult.concepts.map((c) => (
+                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={selectedConcept}
+                    onChange={(e) => setSelectedConcept(e.target.value)}
+                    placeholder="e.g., LangGraph Nodes"
+                  />
+                )}
               </div>
               <div className="field actions">
                 <label>&nbsp;</label>
-                <button type="button" onClick={runTeach} disabled={!selectedConcept || loading}>
+                <button type="button" onClick={runTeach} disabled={!selectedConcept.trim() || loading}>
                   Teach
                 </button>
               </div>
@@ -358,6 +368,26 @@ export default function App() {
           <div className="card">
             <div className="row">
               <div className="field">
+                <label>Quiz concept</label>
+                {planResult ? (
+                  <select
+                    value={quizConcept}
+                    onChange={(e) => setQuizConcept(e.target.value)}
+                  >
+                    <option value="">Same as teach concept</option>
+                    {planResult.concepts.map((c) => (
+                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={quizConcept}
+                    onChange={(e) => setQuizConcept(e.target.value)}
+                    placeholder={selectedConcept || "e.g., LangGraph Nodes"}
+                  />
+                )}
+              </div>
+              <div className="field">
                 <label>Questions</label>
                 <input
                   type="number" min="1" max="10" value={numQuestions}
@@ -366,12 +396,16 @@ export default function App() {
               </div>
               <div className="field actions">
                 <label>&nbsp;</label>
-                <button type="button" onClick={runQuiz} disabled={!selectedConcept || loading}>
+                <button
+                  type="button"
+                  onClick={runQuiz}
+                  disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
+                >
                   Generate Quiz
                 </button>
               </div>
             </div>
-            <div className="hint">Generates a quiz on the selected concept.</div>
+            <div className="hint">Quiz any concept — independent of the learning path.</div>
           </div>
 
           {quizResult && (
