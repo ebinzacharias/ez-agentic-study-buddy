@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -164,10 +166,8 @@ def test_adapter_tool():
     
     if failed == 0:
         print("✓ All adapter tool tests passed!")
-        return True
     else:
-        print("✗ Some tests failed")
-        return False
+        pytest.fail(f"{failed} adapter tool test(s) failed")
 
 
 def test_edge_cases():
@@ -256,8 +256,9 @@ def test_edge_cases():
                 failed += 1
     
     print("\n" + "=" * 60)
-    print(f"Edge Case Results: {passed} passed, {failed} failed")
-    return failed == 0
+    print(f"\nEdge Case Results: {passed} passed, {failed} failed")
+    if failed:
+        pytest.fail(f"{failed} edge case(s) failed")
 
 
 if __name__ == "__main__":
