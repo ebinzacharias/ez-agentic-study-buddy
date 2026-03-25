@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
+from agent.core.decision_rules import DecisionRules
 from agent.core.state import DifficultyLevel, StudySessionState
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
@@ -54,6 +55,35 @@ class PlanRequest(BaseModel):
 
 
 SESSIONS: dict[str, StudySessionState] = {}
+
+
+_ACTION_LABELS: dict[str, str] = {
+    "plan_learning_path": "Plan Learning Path",
+    "teach_concept": "Teach Concept",
+    "generate_quiz": "Generate Quiz",
+    "adapt_difficulty": "Adapt Difficulty",
+    "session_complete": "Session Complete",
+    "set_current_concept": "Set Next Concept",
+    "add_concept": "Add Concept",
+}
+
+
+def _get_next_action(state: StudySessionState) -> dict[str, Any]:
+    """Run DecisionRules against current session state and return a UI-friendly recommendation."""
+    rules = DecisionRules(state)
+    decision = rules.decide_next_action()
+    action = decision.get("action", "")
+    concept = (
+        decision.get("tool_args", {}).get("concept_name")
+        or decision.get("concept_name")
+        or ""
+    )
+    return {
+        "action": action,
+        "label": _ACTION_LABELS.get(action, action.replace("_", " ").title()),
+        "concept": concept,
+        "reason": decision.get("reason", ""),
+    }
 
 
 def _truncate(text: str, max_chars: int) -> str:
@@ -436,6 +466,7 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
             "concept_name": concept,
             "difficulty_level": difficulty,
             "explanation": explanation,
+            "next_action": _get_next_action(state),
         }
     except Exception as e:
         return JSONResponse(
@@ -477,6 +508,15 @@ def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
         )
 
 
+@app.get("/session/{session_id}/next-action")
+def session_next_action(session_id: str) -> dict[str, Any]:
+    """Return the next recommended action for the session based on current state."""
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    return {"session_id": session_id, **_get_next_action(state)}
+
+
 @app.post("/session/{session_id}/evaluate")
 def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
@@ -484,13 +524,28 @@ def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
         return JSONResponse(status_code=404, content={"error": "Session not found"})
 
     try:
+        import json as _json
         result = evaluate_response.invoke(
             {
                 "quiz_data": req.quiz_data,
                 "learner_answers": req.learner_answers,
             }
         )
-        return {"session_id": session_id, **result}
+        # Update session state with the quiz score so DecisionRules can act on it
+        try:
+            quiz_meta = _json.loads(req.quiz_data) if isinstance(req.quiz_data, str) else req.quiz_data
+            concept_name = quiz_meta.get("concept_name", "").strip()
+            score_pct = result.get("overall_percentage", 0)
+            score = score_pct / 100.0
+            if concept_name and concept_name in state.concepts:
+                state.mark_concept_quizzed(concept_name, score)
+            elif concept_name:
+                state.add_concept(concept_name)
+                state.mark_concept_taught(concept_name)
+                state.mark_concept_quizzed(concept_name, score)
+        except Exception:
+            pass
+        return {"session_id": session_id, **result, "next_action": _get_next_action(state)}
     except Exception as e:
         tb = traceback.format_exc()
         logger.error("Evaluate endpoint error:\n%s", tb)
