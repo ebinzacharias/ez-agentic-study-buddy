@@ -161,3 +161,66 @@ footer {
   color: #888;
   font-size: 0.95em;
 }
+
+/* Quiz */
+.quiz-question {
+  margin-bottom: 1.2em;
+  padding-bottom: 1em;
+  border-bottom: 1px solid #e0e6f0;
+}
+.quiz-question:last-of-type { border-bottom: none; }
+.quiz-options { display: flex; flex-direction: column; gap: 0.4em; margin-top: 0.5em; }
+.quiz-option { display: flex; align-items: center; gap: 0.5em; cursor: pointer; font-size: 0.97em; }
+.quiz-input { width: 100%; margin-top: 0.4em; padding: 0.5em 0.7em; border: 1px solid #c9d4e8; border-radius: 6px; font-size: 0.97em; resize: vertical; min-height: 60px; }
+
+/* Score bar */
+.score-bar { background: #e0e6f0; border-radius: 99px; height: 12px; margin: 0.5em 0 0.8em; overflow: hidden; }
+.score-fill { height: 100%; background: linear-gradient(90deg, #3b5bdb, #4dabf7); border-radius: 99px; transition: width 0.5s ease; }
+
+/* Eval items */
+.eval-item { padding: 0.45em 0.8em; margin-bottom: 0.4em; border-radius: 6px; font-size: 0.96em; }
+.eval-item.correct { background: #d3f9d8; color: #1a6b2a; }
+.eval-item.incorrect { background: #ffe6ea; color: #b8002a; }
+.correct-answer { margin-top: 0.3em; font-size: 0.92em; opacity: 0.85; }
+.btn-secondary {
+  background: #e8edf8;
+  color: #3b5bdb;
+  border: 1px solid #c5d0f0;
+  border-radius: 6px;
+  padding: 0.45em 1em;
+  font-size: 0.95em;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-secondary:hover { background: #d0d9f5; }
+
+/* Agent next-action recommendation banner */
+.next-action-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-top: 1.2em;
+  padding: 0.85em 1em;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+}
+.next-action-banner.next-action-complete {
+  background: #d3f9d8;
+  border-color: #8ce99a;
+}
+.next-action-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  flex: 1;
+}
+.next-action-icon { font-size: 1.3em; line-height: 1; }
+.next-action-reason { font-size: 0.93em; color: #3730a3; font-weight: 500; }
+.next-action-complete .next-action-reason { color: #1a6b2a; }
+.next-action-concept {
+  font-size: 0.88em;
+  color: #6b7280;
+  margin-top: 0.2em;
+}

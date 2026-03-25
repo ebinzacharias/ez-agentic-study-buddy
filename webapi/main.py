@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import tempfile
 import traceback
 import uuid
@@ -11,8 +12,11 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
+from agent.core.decision_rules import DecisionRules
 from agent.core.state import DifficultyLevel, StudySessionState
+from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
+from agent.tools.quizzer_tool import generate_quiz
 from agent.tools.teacher_tool import teach_concept
 
 logging.basicConfig(level=logging.DEBUG)
@@ -32,6 +36,18 @@ class TeachRequest(BaseModel):
     context: str = ""
 
 
+class QuizRequest(BaseModel):
+    concept_name: str
+    difficulty_level: str = "beginner"
+    num_questions: int = 3
+    question_types: str = "multiple_choice"
+
+
+class EvaluateRequest(BaseModel):
+    quiz_data: str  # JSON string of the quiz
+    learner_answers: str  # JSON string of answers
+
+
 class PlanRequest(BaseModel):
     topic: str = ""
     difficulty_level: str = "beginner"
@@ -39,6 +55,55 @@ class PlanRequest(BaseModel):
 
 
 SESSIONS: dict[str, StudySessionState] = {}
+
+
+_ACTION_LABELS: dict[str, str] = {
+    "plan_learning_path": "Plan Learning Path",
+    "teach_concept": "Teach Concept",
+    "generate_quiz": "Generate Quiz",
+    "adapt_difficulty": "Adapt Difficulty",
+    "session_complete": "Session Complete",
+    "set_current_concept": "Set Next Concept",
+    "add_concept": "Add Concept",
+}
+
+
+def _get_next_action(state: StudySessionState) -> dict[str, Any]:
+    """Run DecisionRules against current session state and return a UI-friendly recommendation."""
+    rules = DecisionRules(state)
+    decision = rules.decide_next_action()
+    action = decision.get("action", "")
+    concept = (
+        decision.get("tool_args", {}).get("concept_name")
+        or decision.get("concept_name")
+        or ""
+    )
+    return {
+        "action": action,
+        "label": _ACTION_LABELS.get(action, action.replace("_", " ").title()),
+        "concept": concept,
+        "reason": decision.get("reason", ""),
+    }
+
+
+_RATE_LIMIT_HINTS = ("rate limit", "ratelimit", "429", "too many requests")
+_TIMEOUT_HINTS = ("timeout", "timed out", "connection")
+_AUTH_HINTS = ("api key", "authentication", "unauthorized", "401", "403")
+_QUIZ_FORMAT_HINTS = ("invalid_quiz_format", "valid multiple-choice questions")
+
+
+def _classify_error(exc: Exception) -> tuple[str, str]:
+    """Return (error_code, user_message) for a caught exception."""
+    msg = str(exc).lower()
+    if any(s in msg for s in _RATE_LIMIT_HINTS):
+        return "rate_limit", "The LLM is rate-limited. Please wait a moment and try again."
+    if any(s in msg for s in _TIMEOUT_HINTS):
+        return "timeout", "The request timed out. Check your network/proxy and retry."
+    if any(s in msg for s in _AUTH_HINTS):
+        return "auth_error", "API key error. Ensure GROQ_API_KEY is set correctly in .env."
+    if any(s in msg for s in _QUIZ_FORMAT_HINTS):
+        return "invalid_quiz_format", "Could not generate valid multiple-choice options. Please try again."
+    return "llm_error", str(exc)
 
 
 def _truncate(text: str, max_chars: int) -> str:
@@ -67,8 +132,35 @@ def _normalize_difficulty(level: str) -> DifficultyLevel:
     return DifficultyLevel.BEGINNER
 
 
-def _suggest_topic(titles: list[str], filenames: list[str]) -> str:
-    cleaned_titles = [t.strip() for t in titles if t and t.strip()]
+_TEMP_STEM_RE = re.compile(r"^tmp[a-z0-9]{6,}$", re.IGNORECASE)
+
+
+def _looks_like_temp_stem(s: str) -> bool:
+    """Return True if a string looks like a generated temp-file name."""
+    return bool(_TEMP_STEM_RE.match(s.strip()))
+
+
+def _first_heading_from_text(text: str) -> str:
+    """Try to extract the first meaningful heading or line from raw text."""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Strip leading markdown heading markers
+        clean = re.sub(r"^#{1,6}\s*", "", line).strip()
+        # Skip very short or very long lines
+        if 3 < len(clean) < 120:
+            return clean
+    return ""
+
+
+def _suggest_topic(
+    titles: list[str],
+    filenames: list[str],
+    raw_texts: list[str] | None = None,
+) -> str:
+    # 1. Use titles that are NOT temp-file stems
+    cleaned_titles = [t.strip() for t in titles if t and t.strip() and not _looks_like_temp_stem(t)]
     if cleaned_titles:
         unique = _dedupe_preserve_order(cleaned_titles)
         if len(unique) == 1:
@@ -76,8 +168,23 @@ def _suggest_topic(titles: list[str], filenames: list[str]) -> str:
         joined = " / ".join(unique[:3])
         return joined[:80]
 
-    stems = [os.path.splitext(os.path.basename(f))[0].strip() for f in filenames if f]
-    stems = [s for s in stems if s]
+    # 2. Try the first heading / meaningful line from raw content
+    if raw_texts:
+        for text in raw_texts:
+            heading = _first_heading_from_text(text)
+            if heading:
+                return heading[:80]
+
+    # 3. Fall back to the original (non-temp) filename stem
+    stems = []
+    for f in filenames:
+        if not f:
+            continue
+        stem = os.path.splitext(os.path.basename(f))[0].strip()
+        # Replace hyphens/underscores with spaces and title-case
+        stem = re.sub(r"[-_]+", " ", stem).strip()
+        if stem and not _looks_like_temp_stem(stem):
+            stems.append(stem.title())
     if stems:
         unique_stems = _dedupe_preserve_order(stems)
         if len(unique_stems) == 1:
@@ -190,7 +297,7 @@ async def create_session_from_upload(
 
         merged_raw_text = "\n\n".join(raw_text_parts)
         merged_loaded_content = {
-            "title": _suggest_topic(all_titles, filenames),
+            "title": _suggest_topic(all_titles, filenames, raw_text_parts),
             "source_file": "multiple" if len(filenames) > 1 else (filenames[0] if filenames else ""),
             "sections": [],
             "raw_text": merged_raw_text,
@@ -201,7 +308,7 @@ async def create_session_from_upload(
         }
 
         session_id = str(uuid.uuid4())
-        suggested_topic = _suggest_topic(all_titles, filenames)
+        suggested_topic = _suggest_topic(all_titles, filenames, raw_text_parts)
         final_topic = topic.strip() or suggested_topic
 
         state = StudySessionState(session_id=session_id, topic=final_topic)
@@ -307,7 +414,7 @@ async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> di
 def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
     if not state.has_loaded_content():
         return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
 
@@ -338,12 +445,13 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
     except Exception as e:
         tb = traceback.format_exc()
         logger.error("Plan endpoint error:\n%s", tb)
+        error_code, user_msg = _classify_error(e)
         return JSONResponse(
             status_code=500,
             content={
-                "error": str(e),
-                "traceback": tb,
-                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
+                "error": user_msg,
+                "error_code": error_code,
+                "detail": str(e),
             },
         )
 
@@ -352,7 +460,7 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
 def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
     if not state.has_loaded_content():
         return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
 
@@ -374,17 +482,112 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
         )
         state.add_concept(concept)
         state.mark_concept_taught(concept)
+        # Check if tool returned an error string (prefixed with [error:...])
+        if isinstance(explanation, str) and explanation.startswith("[error:"):
+            code = explanation.split("]")[0].replace("[error:", "")
+            msg = explanation.split("] ", 1)[-1]
+            return JSONResponse(
+                status_code=503,
+                content={"error": msg, "error_code": code},
+            )
         return {
             "session_id": state.session_id,
             "concept_name": concept,
             "difficulty_level": difficulty,
             "explanation": explanation,
+            "next_action": _get_next_action(state),
         }
     except Exception as e:
+        error_code, user_msg = _classify_error(e)
         return JSONResponse(
             status_code=500,
-            content={
-                "error": str(e),
-                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
-            },
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
+        )
+
+
+@app.post("/session/{session_id}/quiz")
+def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
+
+    concept = req.concept_name.strip()
+    if not concept:
+        return JSONResponse(status_code=400, content={"error": "concept_name is required"})
+
+    try:
+        quiz = generate_quiz.invoke(
+            {
+                "concept_name": concept,
+                "difficulty_level": req.difficulty_level,
+                "num_questions": req.num_questions,
+                "question_types": req.question_types,
+                "source_material": state.get_content_context(max_chars=4000) if state.has_loaded_content() else "",
+            }
+        )
+        # Tool may return a dict with an error key if all retries failed
+        if isinstance(quiz, dict) and "error" in quiz:
+            error_code = quiz.get("error_code", "llm_error")
+            _, user_msg = _classify_error(Exception(quiz["error"]))
+            return JSONResponse(
+                status_code=503,
+                content={"error": user_msg, "error_code": error_code, "detail": quiz["error"]},
+            )
+        return {"session_id": session_id, **quiz}
+    except Exception as e:
+        error_code, user_msg = _classify_error(e)
+        logger.error("Quiz endpoint error: %s", e)
+        return JSONResponse(
+            status_code=500,
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
+        )
+
+
+@app.get("/session/{session_id}/next-action")
+def session_next_action(session_id: str) -> dict[str, Any]:
+    """Return the next recommended action for the session based on current state."""
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    return {"session_id": session_id, **_get_next_action(state)}
+
+
+@app.post("/session/{session_id}/evaluate")
+def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(
+            status_code=410,
+            content={"error": "Session expired. Please re-upload your material to start a new session.", "error_code": "session_expired"},
+        )
+
+    try:
+        import json as _json
+        result = evaluate_response.invoke(
+            {
+                "quiz_data": req.quiz_data,
+                "learner_answers": req.learner_answers,
+            }
+        )
+        # Update session state with the quiz score so DecisionRules can act on it
+        try:
+            quiz_meta = _json.loads(req.quiz_data) if isinstance(req.quiz_data, str) else req.quiz_data
+            concept_name = quiz_meta.get("concept_name", "").strip()
+            score_pct = result.get("overall_percentage", 0)
+            score = score_pct / 100.0
+            if concept_name and concept_name in state.concepts:
+                state.mark_concept_quizzed(concept_name, score)
+            elif concept_name:
+                state.add_concept(concept_name)
+                state.mark_concept_taught(concept_name)
+                state.mark_concept_quizzed(concept_name, score)
+        except Exception:
+            pass
+        return {"session_id": session_id, **result, "next_action": _get_next_action(state)}
+    except Exception as e:
+        error_code, user_msg = _classify_error(e)
+        logger.error("Evaluate endpoint error: %s", e)
+        return JSONResponse(
+            status_code=500,
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
         )
