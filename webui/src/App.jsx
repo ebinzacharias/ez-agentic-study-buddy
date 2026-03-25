@@ -419,7 +419,7 @@ export default function App() {
           {/* Evaluation Results */}
           {evalResult && (
             <div className="result">
-              <h2>Results â€” {evalResult.overall_percentage}%</h2>
+              <h2>Results &mdash; {evalResult.overall_percentage}%</h2>
               <div className="score-bar">
                 <div
                   className="score-fill"
@@ -427,15 +427,20 @@ export default function App() {
                 />
               </div>
               <p className="muted">
-                {evalResult.questions_evaluated} / {evalResult.total_questions} answered Â·{" "}
+                {evalResult.questions_evaluated} / {evalResult.total_questions} answered &middot;{" "}
                 Score: {evalResult.total_score} / {evalResult.total_questions}
               </p>
-              {evalResult.scores?.map((s) => (
-                <div key={s.question_number} className={`eval-item ${s.is_correct ? "correct" : "incorrect"}`}>
-                  <strong>Q{s.question_number}</strong> â€” {s.feedback}
-                  {" "}({Math.round(s.score * 100)}%)
-                </div>
-              ))}
+              {evalResult.scores?.map((s) => {
+                const q = quizResult?.questions?.find((qq) => qq.question_number === s.question_number);
+                return (
+                  <div key={s.question_number} className={`eval-item ${s.is_correct ? "correct" : "incorrect"}`}>
+                    <strong>Q{s.question_number}</strong> &mdash; {s.feedback} ({Math.round(s.score * 100)}%)
+                    {!s.is_correct && q?.correct_answer && (
+                      <div className="correct-answer">Correct answer: <em>{q.correct_answer}</em></div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>

@@ -23,52 +23,76 @@ def check_keyword_match(answer: str, correct_answer: str, required_keywords: Opt
     return False
 
 
+def resolve_mc_answer(answer: str, options: Optional[List[str]]) -> str:
+    """Resolve a letter answer (A/B/C/D or a/b/c/d) to the full option text."""
+    if not options:
+        return answer
+    letter = answer.strip().upper()
+    letter_map = {chr(65 + i): opt for i, opt in enumerate(options)}  # A->opt[0], B->opt[1] ...
+    if letter in letter_map:
+        return letter_map[letter]
+    return answer
+
+
 def score_multiple_choice(learner_answer: str, correct_answer: str, options: Optional[List[str]] = None) -> float:
-    learner_normalized = normalize_text(learner_answer)
-    correct_normalized = normalize_text(correct_answer)
-    
+    # Resolve letter answers (A/B/C/D) to full option text
+    learner_resolved = resolve_mc_answer(learner_answer, options)
+    correct_resolved = resolve_mc_answer(correct_answer, options)
+
+    learner_normalized = normalize_text(learner_resolved)
+    correct_normalized = normalize_text(correct_resolved)
+
     if learner_normalized == correct_normalized:
         return 1.0
-    
+
+    # Fallback: check if learner picked the same option by index
     if options:
-        learner_matches = [opt for opt in options if normalize_text(opt) == learner_normalized]
-        correct_matches = [opt for opt in options if normalize_text(opt) == correct_normalized]
-        
-        if learner_matches and correct_matches:
-            if learner_matches[0] == correct_matches[0]:
-                return 1.0
-    
-    if correct_normalized in learner_normalized or learner_normalized in correct_normalized:
-        return 0.5
-    
+        learner_idx = next((i for i, opt in enumerate(options) if normalize_text(opt) == learner_normalized), None)
+        correct_idx = next((i for i, opt in enumerate(options) if normalize_text(opt) == correct_normalized), None)
+        if learner_idx is not None and learner_idx == correct_idx:
+            return 1.0
+
     return 0.0
 
 
 def score_short_answer(learner_answer: str, correct_answer: str) -> float:
     learner_normalized = normalize_text(learner_answer)
     correct_normalized = normalize_text(correct_answer)
-    
+
     if learner_normalized == correct_normalized:
         return 1.0
-    
-    if learner_normalized in correct_normalized or correct_normalized in learner_normalized:
-        return 0.7
-    
-    words_correct = normalize_text(correct_answer).split()
-    
-    if not words_correct:
+
+    # Substring match — learner answer is contained in correct or vice versa
+    if correct_normalized in learner_normalized or learner_normalized in correct_normalized:
+        return 1.0
+
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have',
+        'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+        'may', 'might', 'can', 'this', 'that', 'it', 'its', 'they', 'we', 'you',
+    }
+
+    # Key content words from the correct answer (ignore stop words)
+    correct_keywords = [w for w in correct_normalized.split() if w not in stop_words and len(w) > 2]
+    learner_words = set(learner_normalized.split())
+
+    if not correct_keywords:
         return 0.0
-    
-    matching_words = sum(1 for word in words_correct if word in learner_normalized)
-    partial_score = matching_words / len(words_correct)
-    
-    if partial_score >= 0.6:
+
+    matched = sum(1 for kw in correct_keywords if kw in learner_words)
+    ratio = matched / len(correct_keywords)
+
+    # Generous scoring: most key words present = correct
+    if ratio >= 0.8:
+        return 1.0
+    elif ratio >= 0.6:
+        return 0.8
+    elif ratio >= 0.4:
         return 0.6
-    elif partial_score >= 0.4:
+    elif ratio >= 0.2:
         return 0.4
-    elif partial_score >= 0.2:
-        return 0.2
-    
+
     return 0.0
 
 
@@ -165,33 +189,33 @@ def evaluate_response(
             continue
         
         score = 0.0
-        
+
         if question_type == "multiple_choice":
             options = question.get("options")
             score = score_multiple_choice(learner_answer, correct_answer, options)
-        
+
         elif question_type == "short_answer":
             score = score_short_answer(learner_answer, correct_answer)
-            
-            if score < 1.0 and score > 0.0:
-                keywords = extract_keywords_from_answer(correct_answer)
-                if keywords and check_keyword_match(learner_answer, correct_answer, keywords):
-                    score = max(score, 0.8)
-        
+
         elif question_type == "true_false":
             learner_normalized = normalize_text(learner_answer)
             correct_normalized = normalize_text(correct_answer)
-            score = 1.0 if learner_normalized == correct_normalized else 0.0
-        
+            # Accept True/False, true/false, yes/no variants
+            true_vals = {"true", "yes", "correct", "1"}
+            false_vals = {"false", "no", "incorrect", "0"}
+            learner_bool = learner_normalized in true_vals
+            correct_bool = correct_normalized in true_vals
+            if learner_normalized in true_vals or learner_normalized in false_vals:
+                score = 1.0 if learner_bool == correct_bool else 0.0
+            else:
+                score = 1.0 if learner_normalized == correct_normalized else 0.0
+
         else:
-            learner_normalized = normalize_text(learner_answer)
-            correct_normalized = normalize_text(correct_answer)
-            score = 1.0 if learner_normalized == correct_normalized else 0.0
-        
+            score = score_short_answer(learner_answer, correct_answer)
+
         score = max(0.0, min(1.0, score))
-        
         is_correct = score >= 0.8
-        
+
         if score >= 0.8:
             feedback = "Correct!"
         elif score >= 0.6:
@@ -202,7 +226,7 @@ def evaluate_response(
             feedback = "Incorrect, but shows some understanding"
         else:
             feedback = "Incorrect"
-        
+
         scores.append({
             "question_number": question_num,
             "score": round(score, 2),
