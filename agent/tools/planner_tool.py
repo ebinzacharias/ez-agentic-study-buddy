@@ -3,7 +3,7 @@ from typing import List
 from langchain_core.tools import tool
 
 from agent.core.state import DifficultyLevel
-from agent.utils.llm_client import get_llm_client
+from agent.utils.llm_client import call_with_retry, get_llm_client
 
 
 @tool
@@ -73,7 +73,11 @@ Format:
 3. Concept Name 3
 ..."""
 
-    response = llm.invoke(prompt)
+    try:
+        response = call_with_retry(llm.invoke, prompt)
+    except Exception as exc:
+        return [{"error": str(exc), "error_code": "llm_error", "concept_name": topic, "difficulty": difficulty_level, "order": 1}]
+
     content = str(response.content).strip()
     
     concepts = []
