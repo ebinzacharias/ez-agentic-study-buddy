@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import tempfile
 import traceback
 import uuid
@@ -81,8 +82,35 @@ def _normalize_difficulty(level: str) -> DifficultyLevel:
     return DifficultyLevel.BEGINNER
 
 
-def _suggest_topic(titles: list[str], filenames: list[str]) -> str:
-    cleaned_titles = [t.strip() for t in titles if t and t.strip()]
+_TEMP_STEM_RE = re.compile(r"^tmp[a-z0-9]{6,}$", re.IGNORECASE)
+
+
+def _looks_like_temp_stem(s: str) -> bool:
+    """Return True if a string looks like a generated temp-file name."""
+    return bool(_TEMP_STEM_RE.match(s.strip()))
+
+
+def _first_heading_from_text(text: str) -> str:
+    """Try to extract the first meaningful heading or line from raw text."""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Strip leading markdown heading markers
+        clean = re.sub(r"^#{1,6}\s*", "", line).strip()
+        # Skip very short or very long lines
+        if 3 < len(clean) < 120:
+            return clean
+    return ""
+
+
+def _suggest_topic(
+    titles: list[str],
+    filenames: list[str],
+    raw_texts: list[str] | None = None,
+) -> str:
+    # 1. Use titles that are NOT temp-file stems
+    cleaned_titles = [t.strip() for t in titles if t and t.strip() and not _looks_like_temp_stem(t)]
     if cleaned_titles:
         unique = _dedupe_preserve_order(cleaned_titles)
         if len(unique) == 1:
@@ -90,8 +118,23 @@ def _suggest_topic(titles: list[str], filenames: list[str]) -> str:
         joined = " / ".join(unique[:3])
         return joined[:80]
 
-    stems = [os.path.splitext(os.path.basename(f))[0].strip() for f in filenames if f]
-    stems = [s for s in stems if s]
+    # 2. Try the first heading / meaningful line from raw content
+    if raw_texts:
+        for text in raw_texts:
+            heading = _first_heading_from_text(text)
+            if heading:
+                return heading[:80]
+
+    # 3. Fall back to the original (non-temp) filename stem
+    stems = []
+    for f in filenames:
+        if not f:
+            continue
+        stem = os.path.splitext(os.path.basename(f))[0].strip()
+        # Replace hyphens/underscores with spaces and title-case
+        stem = re.sub(r"[-_]+", " ", stem).strip()
+        if stem and not _looks_like_temp_stem(stem):
+            stems.append(stem.title())
     if stems:
         unique_stems = _dedupe_preserve_order(stems)
         if len(unique_stems) == 1:
@@ -204,7 +247,7 @@ async def create_session_from_upload(
 
         merged_raw_text = "\n\n".join(raw_text_parts)
         merged_loaded_content = {
-            "title": _suggest_topic(all_titles, filenames),
+            "title": _suggest_topic(all_titles, filenames, raw_text_parts),
             "source_file": "multiple" if len(filenames) > 1 else (filenames[0] if filenames else ""),
             "sections": [],
             "raw_text": merged_raw_text,
@@ -215,7 +258,7 @@ async def create_session_from_upload(
         }
 
         session_id = str(uuid.uuid4())
-        suggested_topic = _suggest_topic(all_titles, filenames)
+        suggested_topic = _suggest_topic(all_titles, filenames, raw_text_parts)
         final_topic = topic.strip() or suggested_topic
 
         state = StudySessionState(session_id=session_id, topic=final_topic)
