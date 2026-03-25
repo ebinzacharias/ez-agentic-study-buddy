@@ -217,7 +217,8 @@ def root() -> dict[str, str]:
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    ext = os.path.splitext(file.filename)[1].lower()
+    filename = file.filename or "uploaded_file"
+    ext = os.path.splitext(filename)[1].lower()
     if ext not in SUPPORTED_EXTENSIONS:
         return JSONResponse(
             status_code=400,
@@ -266,8 +267,9 @@ async def create_session_from_upload(
 
     try:
         for file in files:
-            filenames.append(file.filename)
-            ext = os.path.splitext(file.filename)[1].lower()
+            filename = file.filename or "uploaded_file"
+            filenames.append(filename)
+            ext = os.path.splitext(filename)[1].lower()
             if ext not in SUPPORTED_EXTENSIONS:
                 return JSONResponse(
                     status_code=400,
@@ -285,7 +287,7 @@ async def create_session_from_upload(
             loaded = load_content(tmp_path)
             loaded_list.append(
                 {
-                    "filename": file.filename,
+                    "filename": filename,
                     "title": loaded.title,
                     "metadata": loaded.metadata,
                 }
@@ -375,7 +377,8 @@ async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> di
     if state is None:
         return JSONResponse(status_code=404, content={"error": "Session not found"})
 
-    ext = os.path.splitext(file.filename)[1].lower()
+    filename = file.filename or "uploaded_file"
+    ext = os.path.splitext(filename)[1].lower()
     if ext not in SUPPORTED_EXTENSIONS:
         return JSONResponse(
             status_code=400,
