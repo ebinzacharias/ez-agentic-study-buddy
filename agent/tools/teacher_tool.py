@@ -2,7 +2,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
-from agent.utils.llm_client import get_llm_client
+from agent.utils.llm_client import call_with_retry, get_llm_client
 
 
 @tool
@@ -144,8 +144,14 @@ Make sure the explanation:
 - Builds understanding progressively
 """
 
-    response = llm.invoke(prompt)
+    try:
+        response = call_with_retry(llm.invoke, prompt)
+    except Exception as exc:
+        error_msg = str(exc)
+        if any(s in error_msg.lower() for s in ("rate limit", "429", "ratelimit")):
+            return "[error:rate_limit] The LLM is currently rate-limited. Please wait a moment and try again."
+        return f"[error:llm_error] Could not generate explanation: {error_msg}"
+
     content = str(response.content).strip()
-    
     return content
 

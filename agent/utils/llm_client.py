@@ -1,5 +1,7 @@
+import logging
 import os
-from typing import Optional, Union
+import time
+from typing import Any, Callable, Optional, TypeVar, Union
 
 import httpx
 from dotenv import load_dotenv
@@ -7,6 +9,63 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+# ---------------------------------------------------------------------------
+# Retry utility
+# ---------------------------------------------------------------------------
+
+_RETRYABLE_SUBSTRINGS = (
+    "rate limit",
+    "ratelimit",
+    "429",
+    "503",
+    "502",
+    "timeout",
+    "timed out",
+    "connection",
+    "temporarily unavailable",
+    "overloaded",
+)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(s in msg for s in _RETRYABLE_SUBSTRINGS)
+
+
+def call_with_retry(
+    fn: Callable[..., Any],
+    *args: Any,
+    max_attempts: int = 3,
+    base_delay: float = 2.0,
+    **kwargs: Any,
+) -> Any:
+    """Call *fn* with exponential-backoff retry on transient LLM errors.
+
+    Raises the last exception if all attempts fail.
+    """
+    last_exc: Exception = RuntimeError("No attempts made")
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            last_exc = exc
+            if not _is_retryable(exc) or attempt == max_attempts:
+                raise
+            delay = base_delay * (2 ** (attempt - 1))
+            logger.warning(
+                "LLM call failed (attempt %d/%d): %s — retrying in %.1fs",
+                attempt,
+                max_attempts,
+                exc,
+                delay,
+            )
+            time.sleep(delay)
+    raise last_exc
 
 
 def _get_http_client() -> httpx.Client:

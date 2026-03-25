@@ -35,6 +35,16 @@ export default function App() {
 
   const resetErrors = () => setError("");
 
+  const fmtError = (data) => {
+    const code = data?.error_code;
+    const msg = data?.error || "Unknown error";
+    if (code === "rate_limit") return `⏳ Rate limited — ${msg}`;
+    if (code === "timeout")    return `⌛ Timeout — ${msg}`;
+    if (code === "auth_error") return `🔑 Auth error — ${msg}`;
+    if (code === "llm_error")  return `🤖 LLM error — ${msg}`;
+    return msg;
+  };
+
   const resetSession = () => {
     setSessionId("");
     setTopic("");
@@ -86,7 +96,7 @@ export default function App() {
         body: formData,
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Upload failed");
+      if (!resp.ok) throw new Error(fmtError(data));
       setSessionId(data.session_id);
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
@@ -114,7 +124,7 @@ export default function App() {
         body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Plan failed");
+      if (!resp.ok) throw new Error(fmtError(data));
       setPlanResult(data);
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
@@ -145,7 +155,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Teach failed");
+      if (!resp.ok) throw new Error(fmtError(data));
       setTeachResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
@@ -176,7 +186,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Quiz generation failed");
+      if (!resp.ok) throw new Error(fmtError(data));
       setQuizResult(data);
     } catch (err) {
       setError(err.message);
@@ -226,7 +236,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Evaluation failed");
+      if (!resp.ok) throw new Error(fmtError(data));
       setEvalResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
