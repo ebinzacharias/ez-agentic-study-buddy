@@ -243,8 +243,8 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="container">
-      <h1>EZ-Agentic Study Buddy</h1>
-      <div className="muted">API: {apiBaseUrl}</div>
+      <h1>EZ Study Buddy</h1>
+      <div className="muted">Upload your materials. Learn adaptively.</div>
 
       {!sessionId && (
         <UploadStep
@@ -325,7 +325,7 @@ export default function App() {
       )}
 
       <footer>
-        <small>EZ-Agentic Study Buddy &copy; 2026</small>
+        <small>EZ Study Buddy &mdash; AI-powered adaptive learning &copy; 2026</small>
       </footer>
     </div>
   );
