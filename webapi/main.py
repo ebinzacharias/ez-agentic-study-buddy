@@ -411,7 +411,7 @@ async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> di
 def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
     if not state.has_loaded_content():
         return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
 
@@ -457,7 +457,7 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
 def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
     if not state.has_loaded_content():
         return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
 
@@ -506,7 +506,7 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
 def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(status_code=410, content={"error": "Session expired. Please re-upload your material.", "error_code": "session_expired"})
 
     concept = req.concept_name.strip()
     if not concept:
@@ -553,7 +553,10 @@ def session_next_action(session_id: str) -> dict[str, Any]:
 def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
     if state is None:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
+        return JSONResponse(
+            status_code=410,
+            content={"error": "Session expired. Please re-upload your material to start a new session.", "error_code": "session_expired"},
+        )
 
     try:
         import json as _json
