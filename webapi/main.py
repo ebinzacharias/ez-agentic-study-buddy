@@ -86,6 +86,23 @@ def _get_next_action(state: StudySessionState) -> dict[str, Any]:
     }
 
 
+_RATE_LIMIT_HINTS = ("rate limit", "ratelimit", "429", "too many requests")
+_TIMEOUT_HINTS = ("timeout", "timed out", "connection")
+_AUTH_HINTS = ("api key", "authentication", "unauthorized", "401", "403")
+
+
+def _classify_error(exc: Exception) -> tuple[str, str]:
+    """Return (error_code, user_message) for a caught exception."""
+    msg = str(exc).lower()
+    if any(s in msg for s in _RATE_LIMIT_HINTS):
+        return "rate_limit", "The LLM is rate-limited. Please wait a moment and try again."
+    if any(s in msg for s in _TIMEOUT_HINTS):
+        return "timeout", "The request timed out. Check your network/proxy and retry."
+    if any(s in msg for s in _AUTH_HINTS):
+        return "auth_error", "API key error. Ensure GROQ_API_KEY is set correctly in .env."
+    return "llm_error", str(exc)
+
+
 def _truncate(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
@@ -425,12 +442,13 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
     except Exception as e:
         tb = traceback.format_exc()
         logger.error("Plan endpoint error:\n%s", tb)
+        error_code, user_msg = _classify_error(e)
         return JSONResponse(
             status_code=500,
             content={
-                "error": str(e),
-                "traceback": tb,
-                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
+                "error": user_msg,
+                "error_code": error_code,
+                "detail": str(e),
             },
         )
 
@@ -461,6 +479,14 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
         )
         state.add_concept(concept)
         state.mark_concept_taught(concept)
+        # Check if tool returned an error string (prefixed with [error:...])
+        if isinstance(explanation, str) and explanation.startswith("[error:"):
+            code = explanation.split("]")[0].replace("[error:", "")
+            msg = explanation.split("] ", 1)[-1]
+            return JSONResponse(
+                status_code=503,
+                content={"error": msg, "error_code": code},
+            )
         return {
             "session_id": state.session_id,
             "concept_name": concept,
@@ -469,12 +495,10 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
             "next_action": _get_next_action(state),
         }
     except Exception as e:
+        error_code, user_msg = _classify_error(e)
         return JSONResponse(
             status_code=500,
-            content={
-                "error": str(e),
-                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
-            },
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
         )
 
 
@@ -498,13 +522,21 @@ def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
                 "source_material": state.get_content_context(max_chars=4000) if state.has_loaded_content() else "",
             }
         )
+        # Tool may return a dict with an error key if all retries failed
+        if isinstance(quiz, dict) and "error" in quiz:
+            error_code = quiz.get("error_code", "llm_error")
+            _, user_msg = _classify_error(Exception(quiz["error"]))
+            return JSONResponse(
+                status_code=503,
+                content={"error": user_msg, "error_code": error_code, "detail": quiz["error"]},
+            )
         return {"session_id": session_id, **quiz}
     except Exception as e:
-        tb = traceback.format_exc()
-        logger.error("Quiz endpoint error:\n%s", tb)
+        error_code, user_msg = _classify_error(e)
+        logger.error("Quiz endpoint error: %s", e)
         return JSONResponse(
             status_code=500,
-            content={"error": str(e), "hint": "Ensure GROQ_API_KEY is set."},
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
         )
 
 
@@ -547,9 +579,9 @@ def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
             pass
         return {"session_id": session_id, **result, "next_action": _get_next_action(state)}
     except Exception as e:
-        tb = traceback.format_exc()
-        logger.error("Evaluate endpoint error:\n%s", tb)
+        error_code, user_msg = _classify_error(e)
+        logger.error("Evaluate endpoint error: %s", e)
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)},
+            content={"error": user_msg, "error_code": error_code, "detail": str(e)},
         )
