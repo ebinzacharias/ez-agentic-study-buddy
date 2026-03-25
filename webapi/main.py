@@ -1,13 +1,86 @@
 import os
 import tempfile
+import uuid
+from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
+from agent.core.state import DifficultyLevel, StudySessionState
+from agent.tools.planner_tool import plan_learning_path
+from agent.tools.teacher_tool import teach_concept
 
 app = FastAPI()
+
+
+class CreateSessionRequest(BaseModel):
+    topic: str = Field(default="", description="Learning topic")
+    difficulty_level: str = Field(default="beginner", description="beginner|intermediate|advanced")
+
+
+class TeachRequest(BaseModel):
+    concept_name: str
+    difficulty_level: str = "beginner"
+    context: str = ""
+
+
+class PlanRequest(BaseModel):
+    topic: str = ""
+    difficulty_level: str = "beginner"
+    max_concepts: int = 10
+
+
+SESSIONS: dict[str, StudySessionState] = {}
+
+
+def _truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n\n[... content truncated ...]"
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
+def _normalize_difficulty(level: str) -> DifficultyLevel:
+    value = (level or "").lower().strip()
+    if value == "intermediate":
+        return DifficultyLevel.INTERMEDIATE
+    if value == "advanced":
+        return DifficultyLevel.ADVANCED
+    return DifficultyLevel.BEGINNER
+
+
+def _suggest_topic(titles: list[str], filenames: list[str]) -> str:
+    cleaned_titles = [t.strip() for t in titles if t and t.strip()]
+    if cleaned_titles:
+        unique = _dedupe_preserve_order(cleaned_titles)
+        if len(unique) == 1:
+            return unique[0]
+        joined = " / ".join(unique[:3])
+        return joined[:80]
+
+    stems = [os.path.splitext(os.path.basename(f))[0].strip() for f in filenames if f]
+    stems = [s for s in stems if s]
+    if stems:
+        unique_stems = _dedupe_preserve_order(stems)
+        if len(unique_stems) == 1:
+            return unique_stems[0]
+        joined = " / ".join(unique_stems[:3])
+        return joined[:80]
+
+    return "Uploaded Materials"
 
 # Allow CORS for local frontend
 app.add_middleware(
@@ -28,6 +101,7 @@ def root() -> dict[str, str]:
         "message": "EZ-Agentic Content Loader API",
         "docs": "http://127.0.0.1:8000/docs",
     }
+
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -50,6 +124,7 @@ async def upload_file(file: UploadFile = File(...)):
             "preview": content.get_summary_context(1200),
             "metadata": content.metadata,
             "title": content.title,
+            "raw_text": content.raw_text,
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -59,3 +134,249 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
+
+
+@app.post("/session/from-upload")
+async def create_session_from_upload(
+    files: list[UploadFile] = File(...),
+    difficulty_level: str = "beginner",
+    topic: str = "",
+) -> dict[str, Any]:
+    if not files:
+        return JSONResponse(status_code=400, content={"error": "No files provided"})
+
+    temp_paths: list[str] = []
+    loaded_list: list[dict[str, Any]] = []
+    all_section_titles: list[str] = []
+    all_titles: list[str] = []
+    filenames: list[str] = []
+    raw_text_parts: list[str] = []
+
+    try:
+        for file in files:
+            filenames.append(file.filename)
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext not in SUPPORTED_EXTENSIONS:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": f"Unsupported file type: {ext}",
+                        "supported": sorted(SUPPORTED_EXTENSIONS),
+                    },
+                )
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                tmp.write(await file.read())
+                tmp_path = tmp.name
+                temp_paths.append(tmp_path)
+
+            loaded = load_content(tmp_path)
+            loaded_list.append(
+                {
+                    "filename": file.filename,
+                    "title": loaded.title,
+                    "metadata": loaded.metadata,
+                }
+            )
+            all_section_titles.extend(loaded.get_section_titles())
+            all_titles.append(loaded.title)
+            if loaded.raw_text.strip():
+                raw_text_parts.append(loaded.raw_text.strip())
+
+        merged_raw_text = "\n\n".join(raw_text_parts)
+        merged_loaded_content = {
+            "title": _suggest_topic(all_titles, filenames),
+            "source_file": "multiple" if len(filenames) > 1 else (filenames[0] if filenames else ""),
+            "sections": [],
+            "raw_text": merged_raw_text,
+            "metadata": {
+                "format": "mixed" if len(filenames) > 1 else (loaded_list[0].get("metadata", {}).get("format", "unknown") if loaded_list else "unknown"),
+                "sources": loaded_list,
+            },
+        }
+
+        session_id = str(uuid.uuid4())
+        suggested_topic = _suggest_topic(all_titles, filenames)
+        final_topic = topic.strip() or suggested_topic
+
+        state = StudySessionState(session_id=session_id, topic=final_topic)
+        state.overall_difficulty = _normalize_difficulty(difficulty_level)
+        state.set_loaded_content(merged_loaded_content)
+        SESSIONS[session_id] = state
+
+        section_titles = _dedupe_preserve_order([t for t in all_section_titles if t and t.strip()])
+
+        return {
+            "session_id": state.session_id,
+            "topic": state.topic,
+            "suggested_topic": suggested_topic,
+            "overall_difficulty": state.overall_difficulty.value,
+            "materials": loaded_list,
+            "section_titles": section_titles,
+            "preview": _truncate(merged_raw_text, 1200),
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        for p in temp_paths:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+
+@app.post("/session")
+def create_session(req: CreateSessionRequest) -> dict[str, Any]:
+    session_id = str(uuid.uuid4())
+    topic = req.topic.strip() or "Untitled"
+    state = StudySessionState(session_id=session_id, topic=topic)
+
+    state.overall_difficulty = _normalize_difficulty(req.difficulty_level)
+
+    SESSIONS[session_id] = state
+    return {
+        "session_id": session_id,
+        "topic": state.topic,
+        "overall_difficulty": state.overall_difficulty.value,
+    }
+
+
+@app.get("/session/{session_id}")
+def get_session(session_id: str) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+
+    return {
+        "session_id": state.session_id,
+        "topic": state.topic,
+        "overall_difficulty": state.overall_difficulty.value,
+        "has_loaded_content": state.has_loaded_content(),
+        "concepts_planned": state.concepts_planned,
+        "progress": state.get_progress_percentage(),
+    }
+
+
+@app.post("/session/{session_id}/upload")
+async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": f"Unsupported file type: {ext}",
+                "supported": sorted(SUPPORTED_EXTENSIONS),
+            },
+        )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+
+    try:
+        loaded = load_content(tmp_path)
+        state.set_loaded_content(loaded.model_dump())
+        if (loaded_title := loaded.title.strip()):
+            state.topic = loaded_title
+
+        return {
+            "session_id": state.session_id,
+            "topic": state.topic,
+            "overall_difficulty": state.overall_difficulty.value,
+            "section_titles": loaded.get_section_titles(),
+            "preview": loaded.get_summary_context(1200),
+            "metadata": loaded.metadata,
+            "title": loaded.title,
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        os.unlink(tmp_path)
+
+
+@app.post("/session/{session_id}/plan")
+def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    if not state.has_loaded_content():
+        return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
+
+    topic = (req.topic or state.topic).strip() or state.topic
+    difficulty = (req.difficulty_level or state.overall_difficulty.value).strip()
+    max_concepts = req.max_concepts
+
+    state.topic = topic
+    state.overall_difficulty = _normalize_difficulty(difficulty)
+
+    try:
+        concepts = plan_learning_path.invoke(
+            {
+                "topic": topic,
+                "difficulty_level": difficulty,
+                "max_concepts": max_concepts,
+                "source_material": state.get_content_context(max_chars=3000),
+            }
+        )
+        # Cache the planned concept names for UI convenience
+        state.concepts_planned = [str(c.get("concept_name", "")).strip() for c in concepts if c.get("concept_name")]
+        return {
+            "session_id": state.session_id,
+            "topic": topic,
+            "difficulty_level": difficulty,
+            "concepts": concepts,
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(e),
+                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
+            },
+        )
+
+
+@app.post("/session/{session_id}/teach")
+def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    if not state.has_loaded_content():
+        return JSONResponse(status_code=400, content={"error": "No content uploaded for this session"})
+
+    concept = req.concept_name.strip()
+    if not concept:
+        return JSONResponse(status_code=400, content={"error": "concept_name is required"})
+
+    difficulty = (req.difficulty_level or state.overall_difficulty.value).strip()
+    state.overall_difficulty = _normalize_difficulty(difficulty)
+
+    try:
+        explanation = teach_concept.invoke(
+            {
+                "concept_name": concept,
+                "difficulty_level": difficulty,
+                "context": req.context,
+                "source_material": state.get_content_context(max_chars=3000),
+            }
+        )
+        state.add_concept(concept)
+        state.mark_concept_taught(concept)
+        return {
+            "session_id": state.session_id,
+            "concept_name": concept,
+            "difficulty_level": difficulty,
+            "explanation": explanation,
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(e),
+                "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
+            },
+        )
