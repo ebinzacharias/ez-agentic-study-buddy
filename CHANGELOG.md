@@ -8,12 +8,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **FastAPI Web Backend** (`webapi/main.py`)
+  - Upload-first UX: upload file(s) → auto-create session with suggested topic
+  - Session management with in-memory `SESSIONS` dict (keyed by UUID)
+  - Endpoints: `/upload`, `/session/from-upload`, `/session`, `/session/{id}`,
+    `/session/{id}/upload`, `/session/{id}/plan`, `/session/{id}/teach`,
+    `/session/{id}/quiz`, `/session/{id}/evaluate`, `/session/{id}/next-action`
+  - Topic auto-suggestion from uploaded content (`_suggest_topic`)
+  - Next-action recommendation engine (`_get_next_action`) — Option B agent-guidance
+  - Error classification for user-friendly messages (`_classify_error`)
+  - Session expiry detection with clear HTTP 404 responses
+  - Corporate proxy / SSL compatibility (optional `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`)
+- **Content Loader** (`agent/utils/content_loader.py`)
+  - Parses `.txt`, `.md`, `.json`, and optionally `.pdf` (PyMuPDF) into structured `LoadedContent`
+  - Markdown heading-based section splitting
+  - JSON key-value and nested structure parsing
+  - File validation, word count, and summary context helpers
+- **React Frontend** (`webui/`)
+  - Vite-based React app for the upload → plan → teach → quiz → evaluate flow
+- **Agent classes** (`agent/agents/`)
+  - `PlannerAgent`, `TeacherAgent`, `QuizzerAgent`, `AdapterAgent`
+- **Quiz schema enforcement** — multiple-choice only, grounded in uploaded content
+- **Test suite expansion**
+  - `test_agent_workflow_interactions.py` — API workflow interaction tests
+  - `test_topic_suggestion.py` — topic auto-suggestion regression tests
+  - `test_quizzer_schema_validation.py` — quiz schema validation tests
+  - `test_content_loader.py` — content loader tests
+  - Total: 19 test files under `scripts/`
+- **CI pipeline** (`.github/workflows/ci.yml`)
+  - GitHub Actions: ruff lint, mypy type check, pytest
+  - Uses `uv sync --extra web` to install FastAPI dependencies
+  - `pytest.importorskip("fastapi")` guards for web-dependent tests
+  - `pytest.mark.skipif(not GROQ_API_KEY)` for LLM-dependent tests
+
+### Fixed
+- Topic suggestion temp-name bug — broadened `_TEMP_STEM_RE` regex to match all temp file patterns
+- mypy duplicate module discovery — added `webapi/__init__.py` package marker
+- mypy type errors on optional `UploadFile.filename` — normalized with `file.filename or "uploaded_file"`
+- Pytest `PytestReturnNotNoneWarning` in 8+ test files — replaced `return True/False` with `pytest.fail()`
+- Ruff E402 import-order errors after `pytest.importorskip()` guards — added `# noqa: E402`
+- Malformed quiz output handling — fallback parsing for non-JSON LLM responses
+- Session expiry handling — clear error messages when session no longer exists
+
+### Changed
+- CI workflow: `uv sync` → `uv sync --extra web` to include FastAPI/uvicorn/python-multipart
+- All documentation updated to reflect web UI workflow and current project structure
+
+### Previous (pre-web)
 - Minimal multi-agent architecture foundation:
   - Base agent class (`AgentBase`) with state, messaging, and reasoning loop
   - PlannerAgent and TeacherAgent as independent agent subclasses
   - Orchestrator for agent instantiation and message passing
-  - Demo interaction between agents (see `agent/core/orchestrator.py`)
-  - Updated README with new architecture diagram and explanation
 - Decision Rules system with explicit if/then logic for state-driven decisions
 - ReAct loop implementation in StudyBuddyAgent with Observe → Decide → Act pattern
 - Quiz workflow integration connecting quiz generation and evaluation
