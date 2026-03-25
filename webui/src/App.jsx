@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+﻿import React, { useMemo, useState } from "react";
 
 export default function App() {
   const apiBaseUrl = useMemo(
@@ -23,6 +23,12 @@ export default function App() {
   const [teachContext, setTeachContext] = useState("");
   const [teachResult, setTeachResult] = useState(null);
 
+  // Quiz state
+  const [numQuestions, setNumQuestions] = useState(3);
+  const [quizResult, setQuizResult] = useState(null);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [evalResult, setEvalResult] = useState(null);
+
   const resetErrors = () => setError("");
 
   const resetSession = () => {
@@ -35,6 +41,9 @@ export default function App() {
     setTeachResult(null);
     setSelectedConcept("");
     setTeachContext("");
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
     resetErrors();
   };
 
@@ -43,26 +52,28 @@ export default function App() {
     setUploadResult(null);
     setPlanResult(null);
     setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
     resetErrors();
   };
 
   const uploadAndCreateSession = async (e) => {
     e.preventDefault();
     if (!file) return;
-
     setLoading(true);
     resetErrors();
     setUploadResult(null);
     setPlanResult(null);
     setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
     setSelectedConcept("");
-
     const formData = new FormData();
     formData.append("files", file);
     formData.append("difficulty_level", difficulty);
-    if (topic.trim()) {
-      formData.append("topic", topic.trim());
-    }
+    if (topic.trim()) formData.append("topic", topic.trim());
     try {
       const resp = await fetch(`${apiBaseUrl}/session/from-upload`, {
         method: "POST",
@@ -82,23 +93,19 @@ export default function App() {
   };
 
   const runPlan = async () => {
-    if (!sessionId) {
-      setError("Upload material first.");
-      return;
-    }
+    if (!sessionId) { setError("Upload material first."); return; }
     setLoading(true);
     resetErrors();
     setPlanResult(null);
     setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic,
-          difficulty_level: difficulty,
-          max_concepts: maxConcepts,
-        }),
+        body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Plan failed");
@@ -113,17 +120,14 @@ export default function App() {
   };
 
   const runTeach = async () => {
-    if (!sessionId) {
-      setError("Upload material first.");
-      return;
-    }
-    if (!selectedConcept.trim()) {
-      setError("Pick a concept to teach.");
-      return;
-    }
+    if (!sessionId) { setError("Upload material first."); return; }
+    if (!selectedConcept.trim()) { setError("Pick a concept to teach."); return; }
     setLoading(true);
     resetErrors();
     setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/teach`, {
         method: "POST",
@@ -144,12 +148,69 @@ export default function App() {
     }
   };
 
+  const runQuiz = async () => {
+    if (!sessionId) { setError("Upload material first."); return; }
+    if (!selectedConcept.trim()) { setError("Pick a concept to quiz on."); return; }
+    setLoading(true);
+    resetErrors();
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
+    try {
+      const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          concept_name: selectedConcept,
+          difficulty_level: difficulty,
+          num_questions: numQuestions,
+          question_types: "multiple_choice,short_answer",
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Quiz generation failed");
+      setQuizResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runEvaluate = async () => {
+    if (!quizResult) { setError("Generate a quiz first."); return; }
+    setLoading(true);
+    resetErrors();
+    setEvalResult(null);
+    const answers = quizResult.questions.map((q) => ({
+      question_number: q.question_number,
+      answer: quizAnswers[q.question_number] || "",
+    }));
+    try {
+      const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/evaluate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quiz_data: JSON.stringify(quizResult),
+          learner_answers: JSON.stringify({ answers }),
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Evaluation failed");
+      setEvalResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container">
-      <h1>EZ-Agentic Content Loader</h1>
+      <h1>EZ-Agentic Study Buddy</h1>
       <div className="muted">API: {apiBaseUrl}</div>
 
-      {/* Step 1: Upload-first flow */}
+      {/* Step 1: Upload */}
       {!sessionId && (
         <div className="card">
           <form onSubmit={uploadAndCreateSession} className="upload-form">
@@ -163,37 +224,34 @@ export default function App() {
             </button>
           </form>
           <div className="hint">
-            For PDFs, install <code>pymupdf</code> on the API server.
+            Supported: TXT, MD, PDF, JSON. For PDFs, install <code>pymupdf</code> on the API server.
           </div>
         </div>
       )}
 
       {error && <div className="error">{error}</div>}
 
-      {/* Step 2: Show material and session controls after upload */}
+      {/* Step 2: Material preview */}
       {uploadResult && (
         <div className="result">
           <h2>Material</h2>
           {uploadResult.materials && (
-            <div className="hint">
-              {uploadResult.materials.map((m) => m.filename).join(", ")}
-            </div>
+            <div className="hint">{uploadResult.materials.map((m) => m.filename).join(", ")}</div>
           )}
           <h3>Section Titles</h3>
           <ul>
             {uploadResult.section_titles.length === 0 && <li>(none found)</li>}
-            {uploadResult.section_titles.map((t, i) => (
-              <li key={i}>{t}</li>
-            ))}
+            {uploadResult.section_titles.map((t, i) => <li key={i}>{t}</li>)}
           </ul>
           <h3>Content Preview</h3>
           <pre className="preview">{uploadResult.preview}</pre>
         </div>
       )}
 
-      {/* Step 3: Topic/difficulty/session controls after upload */}
+      {/* Steps 3+: Session controls */}
       {sessionId && (
         <>
+          {/* Topic / Difficulty / Reset */}
           <div className="card">
             <div className="row">
               <div className="field">
@@ -204,7 +262,6 @@ export default function App() {
                   placeholder="e.g., Python Basics"
                 />
               </div>
-
               <div className="field">
                 <label>Difficulty</label>
                 <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
@@ -213,29 +270,24 @@ export default function App() {
                   <option value="advanced">Advanced</option>
                 </select>
               </div>
-
               <div className="field actions">
                 <label>&nbsp;</label>
-                <button type="button" onClick={resetSession} disabled={loading}>
-                  New Upload
-                </button>
+                <button type="button" onClick={resetSession} disabled={loading}>New Upload</button>
               </div>
             </div>
             <div className="pill">
               Session: {sessionId}
-              {suggestedTopic ? ` · Suggested: ${suggestedTopic}` : ""}
+              {suggestedTopic ? ` Â· Suggested: ${suggestedTopic}` : ""}
             </div>
           </div>
 
+          {/* Plan */}
           <div className="card">
             <div className="row">
               <div className="field">
                 <label>Max concepts</label>
                 <input
-                  type="number"
-                  min="1"
-                  max="25"
-                  value={maxConcepts}
+                  type="number" min="1" max="25" value={maxConcepts}
                   onChange={(e) => setMaxConcepts(Number(e.target.value) || 10)}
                 />
               </div>
@@ -247,7 +299,7 @@ export default function App() {
               </div>
             </div>
             <div className="hint">
-              Planning/teaching uses an LLM. Ensure your API environment has <code>GROQ_API_KEY</code> set.
+              Uses an LLM â€” ensure <code>GROQ_API_KEY</code> is set.
             </div>
           </div>
 
@@ -262,6 +314,7 @@ export default function App() {
             </div>
           )}
 
+          {/* Teach */}
           <div className="card">
             <div className="row">
               <div className="field">
@@ -273,13 +326,10 @@ export default function App() {
                 >
                   <option value="">Select a concept</option>
                   {(planResult?.concepts || []).map((c) => (
-                    <option key={c.concept_name} value={c.concept_name}>
-                      {c.concept_name}
-                    </option>
+                    <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
                   ))}
                 </select>
               </div>
-
               <div className="field actions">
                 <label>&nbsp;</label>
                 <button type="button" onClick={runTeach} disabled={!selectedConcept || loading}>
@@ -287,7 +337,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-
             <div className="field">
               <label>Context (optional)</label>
               <textarea
@@ -304,6 +353,91 @@ export default function App() {
               <pre className="preview">{teachResult.explanation}</pre>
             </div>
           )}
+
+          {/* Quiz */}
+          <div className="card">
+            <div className="row">
+              <div className="field">
+                <label>Questions</label>
+                <input
+                  type="number" min="1" max="10" value={numQuestions}
+                  onChange={(e) => setNumQuestions(Number(e.target.value) || 3)}
+                />
+              </div>
+              <div className="field actions">
+                <label>&nbsp;</label>
+                <button type="button" onClick={runQuiz} disabled={!selectedConcept || loading}>
+                  Generate Quiz
+                </button>
+              </div>
+            </div>
+            <div className="hint">Generates a quiz on the selected concept.</div>
+          </div>
+
+          {quizResult && (
+            <div className="result">
+              <h2>Quiz: {quizResult.concept_name}</h2>
+              {quizResult.questions?.map((q) => (
+                <div key={q.question_number} className="quiz-question">
+                  <p><strong>Q{q.question_number}.</strong> {q.question}</p>
+                  {q.options ? (
+                    <div className="quiz-options">
+                      {q.options.map((opt, i) => (
+                        <label key={i} className="quiz-option">
+                          <input
+                            type="radio"
+                            name={`q${q.question_number}`}
+                            value={opt}
+                            checked={quizAnswers[q.question_number] === opt}
+                            onChange={() => setQuizAnswers((a) => ({ ...a, [q.question_number]: opt }))}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <textarea
+                      className="quiz-input"
+                      placeholder="Your answer..."
+                      value={quizAnswers[q.question_number] || ""}
+                      onChange={(e) => setQuizAnswers((a) => ({ ...a, [q.question_number]: e.target.value }))}
+                    />
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={runEvaluate}
+                disabled={loading}
+                style={{ marginTop: "1rem" }}
+              >
+                {loading ? "Evaluating..." : "Submit & Evaluate"}
+              </button>
+            </div>
+          )}
+
+          {/* Evaluation Results */}
+          {evalResult && (
+            <div className="result">
+              <h2>Results â€” {evalResult.overall_percentage}%</h2>
+              <div className="score-bar">
+                <div
+                  className="score-fill"
+                  style={{ width: `${evalResult.overall_percentage}%` }}
+                />
+              </div>
+              <p className="muted">
+                {evalResult.questions_evaluated} / {evalResult.total_questions} answered Â·{" "}
+                Score: {evalResult.total_score} / {evalResult.total_questions}
+              </p>
+              {evalResult.scores?.map((s) => (
+                <div key={s.question_number} className={`eval-item ${s.is_correct ? "correct" : "incorrect"}`}>
+                  <strong>Q{s.question_number}</strong> â€” {s.feedback}
+                  {" "}({Math.round(s.score * 100)}%)
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -313,3 +447,4 @@ export default function App() {
     </div>
   );
 }
+

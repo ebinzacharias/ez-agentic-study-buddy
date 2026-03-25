@@ -12,7 +12,9 @@ from pydantic import BaseModel, Field
 
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
 from agent.core.state import DifficultyLevel, StudySessionState
+from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
+from agent.tools.quizzer_tool import generate_quiz
 from agent.tools.teacher_tool import teach_concept
 
 logging.basicConfig(level=logging.DEBUG)
@@ -30,6 +32,18 @@ class TeachRequest(BaseModel):
     concept_name: str
     difficulty_level: str = "beginner"
     context: str = ""
+
+
+class QuizRequest(BaseModel):
+    concept_name: str
+    difficulty_level: str = "beginner"
+    num_questions: int = 3
+    question_types: str = "multiple_choice,short_answer"
+
+
+class EvaluateRequest(BaseModel):
+    quiz_data: str  # JSON string of the quiz
+    learner_answers: str  # JSON string of answers
 
 
 class PlanRequest(BaseModel):
@@ -387,4 +401,56 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
                 "error": str(e),
                 "hint": "If this uses an LLM, ensure GROQ_API_KEY (or provider key) is set.",
             },
+        )
+
+
+@app.post("/session/{session_id}/quiz")
+def session_quiz(session_id: str, req: QuizRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+
+    concept = req.concept_name.strip()
+    if not concept:
+        return JSONResponse(status_code=400, content={"error": "concept_name is required"})
+
+    try:
+        quiz = generate_quiz.invoke(
+            {
+                "concept_name": concept,
+                "difficulty_level": req.difficulty_level,
+                "num_questions": req.num_questions,
+                "question_types": req.question_types,
+            }
+        )
+        return {"session_id": session_id, **quiz}
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error("Quiz endpoint error:\n%s", tb)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "hint": "Ensure GROQ_API_KEY is set."},
+        )
+
+
+@app.post("/session/{session_id}/evaluate")
+def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+
+    try:
+        result = evaluate_response.invoke(
+            {
+                "quiz_data": req.quiz_data,
+                "learner_answers": req.learner_answers,
+            }
+        )
+        return {"session_id": session_id, **result}
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error("Evaluate endpoint error:\n%s", tb)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
         )
