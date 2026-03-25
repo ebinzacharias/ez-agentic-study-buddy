@@ -121,16 +121,46 @@ Return ONLY valid JSON, no additional text before or after."""
         }
 
     content = str(response.content).strip()
-    
+
     import json
-    
+
     json_start = content.find("{")
     json_end = content.rfind("}") + 1
-    
+
     if json_start != -1 and json_end > json_start:
         json_content = content[json_start:json_end]
         try:
             quiz_data = json.loads(json_content)
+            # Strip MC questions that came back without options (LLM hallucination)
+            questions = quiz_data.get("questions") or []
+            valid_questions = [
+                q for q in questions
+                if q.get("question_type") != "multiple_choice" or (
+                    isinstance(q.get("options"), list) and len(q["options"]) >= 2
+                )
+            ]
+            if not valid_questions and questions:
+                # All questions were invalid — retry once with a stricter prompt nudge
+                try:
+                    retry_prompt = prompt + "\n\nCRITICAL: Every question MUST include an \"options\" array with exactly 4 strings. No nulls."
+                    retry_response = call_with_retry(llm.invoke, retry_prompt, max_attempts=2)
+                    retry_content = str(retry_response.content).strip()
+                    rs = retry_content.find("{")
+                    re_ = retry_content.rfind("}") + 1
+                    if rs != -1 and re_ > rs:
+                        retry_data = json.loads(retry_content[rs:re_])
+                        retry_qs = [
+                            q for q in (retry_data.get("questions") or [])
+                            if isinstance(q.get("options"), list) and len(q["options"]) >= 2
+                        ]
+                        if retry_qs:
+                            retry_data["questions"] = retry_qs
+                            retry_data["total_questions"] = len(retry_qs)
+                            return retry_data
+                except Exception:
+                    pass
+            quiz_data["questions"] = valid_questions
+            quiz_data["total_questions"] = len(valid_questions)
             return quiz_data
         except json.JSONDecodeError as e:
             return {
