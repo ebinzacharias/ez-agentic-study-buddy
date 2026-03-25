@@ -40,7 +40,7 @@ class QuizRequest(BaseModel):
     concept_name: str
     difficulty_level: str = "beginner"
     num_questions: int = 3
-    question_types: str = "multiple_choice,short_answer"
+    question_types: str = "multiple_choice"
 
 
 class EvaluateRequest(BaseModel):

@@ -172,7 +172,7 @@ export default function App() {
           concept_name: conceptToQuiz,
           difficulty_level: difficulty,
           num_questions: numQuestions,
-          question_types: "multiple_choice,short_answer",
+          question_types: "multiple_choice",
         }),
       });
       const data = await resp.json();
@@ -472,12 +472,7 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <textarea
-                      className="quiz-input"
-                      placeholder="Your answer..."
-                      value={quizAnswers[q.question_number] || ""}
-                      onChange={(e) => setQuizAnswers((a) => ({ ...a, [q.question_number]: e.target.value }))}
-                    />
+                    <p className="muted" style={{fontSize:"0.85em"}}>No options available for this question.</p>
                   )}
                 </div>
               ))}
