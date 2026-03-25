@@ -161,3 +161,23 @@ footer {
   color: #888;
   font-size: 0.95em;
 }
+
+/* Quiz */
+.quiz-question {
+  margin-bottom: 1.2em;
+  padding-bottom: 1em;
+  border-bottom: 1px solid #e0e6f0;
+}
+.quiz-question:last-of-type { border-bottom: none; }
+.quiz-options { display: flex; flex-direction: column; gap: 0.4em; margin-top: 0.5em; }
+.quiz-option { display: flex; align-items: center; gap: 0.5em; cursor: pointer; font-size: 0.97em; }
+.quiz-input { width: 100%; margin-top: 0.4em; padding: 0.5em 0.7em; border: 1px solid #c9d4e8; border-radius: 6px; font-size: 0.97em; resize: vertical; min-height: 60px; }
+
+/* Score bar */
+.score-bar { background: #e0e6f0; border-radius: 99px; height: 12px; margin: 0.5em 0 0.8em; overflow: hidden; }
+.score-fill { height: 100%; background: linear-gradient(90deg, #3b5bdb, #4dabf7); border-radius: 99px; transition: width 0.5s ease; }
+
+/* Eval items */
+.eval-item { padding: 0.45em 0.8em; margin-bottom: 0.4em; border-radius: 6px; font-size: 0.96em; }
+.eval-item.correct { background: #d3f9d8; color: #1a6b2a; }
+.eval-item.incorrect { background: #ffe6ea; color: #b8002a; }
