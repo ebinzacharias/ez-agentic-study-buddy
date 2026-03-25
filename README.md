@@ -1,217 +1,191 @@
-
 # EZ Agentic Study Buddy
 
-**A Modular Multi-Agent Study Assistant Platform**
+**An Upload-First AI Study Assistant with Adaptive Learning**
 
 **Started:** January 2026
 
+---
 
-## Vision & MVP
+## What Is This?
 
-## Features (Current Implementation)
+EZ Agentic Study Buddy lets you **upload your own course materials** (PDF, Markdown, plain text, JSON) and immediately get an **AI-powered study session** — adaptive learning paths, concept explanations, multiple-choice quizzes, and feedback — all grounded in *your* content.
 
-- **Multi-Agent Collaboration:** Minimal multi-agent architecture implemented. Agents (Planner, Teacher) are independent classes with their own state and message handling. An orchestrator manages agent communication. More agents (Quizzer, Evaluator, Adapter) will be added as independent agents or modules.
-- **Agentic Workflows:** Implements ReAct pattern and decision rules for autonomous learning flows.
-- **Tool Integration:** Agents use modular tools for planning, teaching, quizzing, evaluating, and adapting.
-- **State Management:** Tracks session progress and adapts difficulty using Pydantic models.
-- **Retry & Error Handling:** Retry logic and alternative teaching strategies for robustness.
-- **Content Loading:** Load and parse user materials (`.txt`, `.md`, `.json`, optional `.pdf`).
-- **Minimal Web UI:** FastAPI upload endpoint + React UI for uploading and previewing parsed content.
+It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decision making, tool orchestration, retry mechanisms, and difficulty adaptation.
 
+## Features
+
+| Category | Details |
+|----------|---------|
+| **Upload-First UX** | Drop a file, get a session. Topic is auto-suggested from content. |
+| **Adaptive Learning Paths** | Planner tool breaks material into ordered concepts at the right difficulty. |
+| **Concept Teaching** | Teacher tool generates grounded explanations with retry support. |
+| **Multiple-Choice Quizzes** | Quizzer tool creates MC questions sourced from uploaded content. |
+| **Evaluation & Feedback** | Evaluator tool scores answers with explicit rule-based logic (not LLM judgment). |
+| **Difficulty Adaptation** | Adapter tool adjusts difficulty up/down based on quiz performance. |
+| **Session State Tracking** | Pydantic-based state tracks progress, scores, retries, and next actions. |
+| **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
+| **Content Loading** | Parses `.txt`, `.md`, `.json`, and optionally `.pdf` (with PyMuPDF). |
+| **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
+| **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
 
 ## Tech Stack
 
-- **Python 3.11+**
-- **Pydantic** for state and data validation
-- **LangGraph, CrewAI, BeeAI, AG2 (AutoGen)** concepts and patterns
-- **Groq/OpenAI LLMs** (pluggable)
-- **uv** package manager for fast dependency management
-
-
-## Quick Start
-
-```bash
-# Install dependencies
-uv sync
-
-# Configure environment
-cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
-
-# Test setup
-uv run python scripts/test_llm.py
-```
-
-See [USAGE.md](USAGE.md) for more details and examples.
-
-## Minimal Web UI (Content Loader)
-
-Backend (FastAPI):
-
-```powershell
-.venv\Scripts\python.exe -m pip install -e ".[web]"
-.venv\Scripts\python.exe -m uvicorn webapi.main:app --reload --port 8000
-```
-
-Frontend (React):
-
-```powershell
-cd webui
-npm install
-npm run dev
-```
-
-EZ Agentic Study Buddy is an open-source, modular platform for building and running multi-agent AI study assistants. The MVP enables any user to:
-- Install the repo and run it locally with minimal setup
-- Add their own course materials or documentation (PDF, markdown, text) to the `materials/` folder
-- Interact with agentic workflows (quiz generation, summarization, adaptive learning, etc.) via a simple UI (CLI or web)
-- Receive quizzes, explanations, and feedback based only on their own uploaded content
-
-**Why?**
-- Empower anyone to turn their own materials into interactive learning experiences
-- Showcase practical multi-agent AI, tool integration, and adaptive workflows
-- Serve as a living lab for agentic AI experimentation and learning
-
-
-
-
-## How to Use
-
-1. **Clone the repo and install dependencies** (see Setup below)
-2. **Add your course materials** (PDF, markdown, or text) to the `materials/` folder
-3. **Run the UI** (CLI or web) to select documents and start agentic workflows (quiz, summarize, teach, etc.)
-4. **Get interactive quizzes, explanations, and feedback based on your own content**
-
-See [USAGE.md](USAGE.md) for detailed instructions and examples.
-
-## Core Architecture
-
-
-### Minimal Multi-Agent Architecture
-
-```mermaid
-flowchart TD
-    subgraph Orchestrator
-        O[Orchestrator]
-    end
-    subgraph Agents
-        P[PlannerAgent]
-        T[TeacherAgent]
-    end
-    O --> P
-    O --> T
-    P -- sends plan --> T
-    T -- responds/acts --> O
-```
-
-**How it works:**
-- Each agent is a class with its own state and message handler.
-- The orchestrator instantiates agents and manages message passing.
-- Agents communicate by sending and receiving messages (see `agent/core/agent_base.py`, `agent/agents/planner_agent.py`, `agent/agents/teacher_agent.py`, `agent/core/orchestrator.py`).
-
-This foundation will be extended with more agents and richer workflows in future phases.
-
-### ReAct Pattern
-
-The agent continuously loops through three phases:
-
-```mermaid
-flowchart LR
-    O[OBSERVE<br/>Read State] --> D[DECIDE<br/>Choose Action]
-    D --> A[ACT<br/>Execute]
-    A --> O
-    
-    style O fill:#e3f2fd
-    style D fill:#fff3e0
-    style A fill:#e8f5e9
-```
-
-1. **OBSERVE**: Reads current state (progress, scores, concepts taught)
-2. **DECIDE**: Uses LLM to analyze state and choose next action
-3. **ACT**: Executes chosen action and updates state
-
-### Components
-
-- **StudyBuddyAgent**: Main orchestrator managing the ReAct loop with LCEL chains
-- **LLM Client**: Interface to language models (Groq default, OpenAI optional)
-- **State Manager**: Tracks session progress using Pydantic models
-- **Decision Rules**: Rule-based decision making for autonomous actions
-- **Retry Manager**: Handles retry logic and alternative teaching strategies
-- **ToolExecutor**: Manages tool binding, execution, and automatic state updates
-- **Tools**: 
-  - Planner (creates learning paths)
-  - Teacher (generates explanations with retry support)
-  - Quizzer (creates quizzes)
-  - Evaluator (evaluates responses with explicit scoring)
-  - Adapter (adjusts difficulty based on performance)
-
-For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.11+, FastAPI, Pydantic |
+| Agent Core | LangChain, LCEL chains, ReAct pattern |
+| LLM | Groq (default, free) or OpenAI (pluggable) |
+| Frontend | React + Vite |
+| Package Manager | uv |
+| CI | GitHub Actions — ruff, mypy, pytest |
 
 ## Quick Start
-
-```python
-from agent.core.agent import StudyBuddyAgent
-
-agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
-result = agent.run()
-```
-
-See [USAGE.md](USAGE.md) for detailed usage guide and examples.
 
 ### Prerequisites
 
 - Python 3.11+
 - [uv](https://github.com/astral-sh/uv) package manager
-- Groq API key ([console.groq.com](https://console.groq.com) - free)
+- Node.js 18+ (for the web UI)
+- Groq API key — free at [console.groq.com](https://console.groq.com)
 
-### Setup
+### Install & Verify
 
 ```bash
-# Install dependencies
-uv sync
+# Clone & install (includes FastAPI backend)
+git clone https://github.com/ebinzacharias/ez-agentic-study-buddy.git
+cd ez-agentic-study-buddy
+uv sync --extra web
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
+# Edit .env → add your GROQ_API_KEY
 
-# Test setup
-uv run python scripts/test_llm.py
+# Run offline tests to verify
+uv run python -m pytest scripts/test_decision_rules.py -q
 ```
 
-### Usage
+### Run the Web App
+
+**Backend (FastAPI):**
+
+```bash
+uv run uvicorn webapi.main:app --reload --port 8000
+```
+
+**Frontend (React):**
+
+```bash
+cd webui
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173), upload a file, and start studying.
+
+### Programmatic Usage
 
 ```python
 from agent.core.agent import StudyBuddyAgent
 
 agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
 result = agent.run()
+
+print(f"Concepts taught: {result['concepts_taught']}")
+print(f"Progress: {result['progress_percentage']:.1f}%")
 ```
 
-See [USAGE.md](USAGE.md) for detailed usage guide, examples, and best practices.
+See [USAGE.md](USAGE.md) for the full usage guide.
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Web["Web Layer"]
+        UI[React UI<br/>Upload → Study Flow]
+        API[FastAPI Backend<br/>Session Management]
+        CL[Content Loader<br/>PDF / MD / TXT / JSON]
+    end
+
+    subgraph Agent["Agent Core"]
+        SA[StudyBuddyAgent<br/>ReAct Loop]
+        DR[DecisionRules<br/>Next-Action Logic]
+        SM[StudySessionState<br/>Pydantic Models]
+        RM[RetryManager<br/>Alternative Strategies]
+    end
+
+    subgraph Tools["Tool Layer"]
+        PT[Planner Tool]
+        TT[Teacher Tool]
+        QT[Quizzer Tool]
+        ET[Evaluator Tool]
+        AT[Adapter Tool]
+    end
+
+    LLM[LLM Client<br/>Groq / OpenAI]
+
+    UI --> API
+    API --> CL
+    API --> SA
+    SA --> DR
+    SA --> SM
+    DR --> RM
+    SA --> PT & TT & QT & ET & AT
+    PT & TT & QT --> LLM
+```
+
+For detailed architecture, component diagrams, and data flow, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Project Structure
 
 ```
-agent/           # Core logic, workflows, state, agent orchestration
-tools/           # Modular tools (planner, teacher, quizzer, etc.)
-utils/           # Utilities (LLM client, helpers)
-materials/       # User-uploaded documents (PDF, markdown, text)
-ui/              # CLI or web interface code
-docs/            # User/developer documentation (optional)
-LEARNINGS/       # Step-by-step notes, concepts, and learning journey
-scripts/         # Test scripts
-README.md, USAGE.md, ARCHITECTURE.md, etc.
+agent/
+  core/           # Agent, state, decision rules, retry manager, quiz workflow, tool executor
+  chains/         # LCEL chain composition (observe → decide → act)
+  tools/          # Planner, Teacher, Quizzer, Evaluator, Adapter
+  agents/         # Agent classes (Planner, Teacher, Quizzer, Adapter)
+  utils/          # LLM client, content loader
+webapi/
+  main.py         # FastAPI backend — sessions, upload, plan, teach, quiz, evaluate
+webui/
+  src/            # React frontend (Vite)
+scripts/          # Pytest test suite (19 test files)
+LEARNINGS/        # Step-by-step implementation notes & agentic AI concepts
 ```
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/upload` | Upload & parse a single file |
+| `POST` | `/session/from-upload` | Upload file(s) → create session with auto-suggested topic |
+| `POST` | `/session` | Create a session from already-uploaded content |
+| `GET`  | `/session/{id}` | Get session state |
+| `POST` | `/session/{id}/upload` | Upload additional file to existing session |
+| `POST` | `/session/{id}/plan` | Generate learning path |
+| `POST` | `/session/{id}/teach` | Teach a concept |
+| `POST` | `/session/{id}/quiz` | Generate a quiz |
+| `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
+| `GET`  | `/session/{id}/next-action` | Get recommended next step |
+
+## Testing
+
+```bash
+# Full test suite (requires GROQ_API_KEY for LLM tests)
+uv run python -m pytest -q
+
+# Offline-only tests (no API key needed)
+uv run python -m pytest scripts/test_decision_rules.py scripts/test_quizzer_schema_validation.py -q
+```
+
+Tests that require `GROQ_API_KEY` skip automatically in CI.
 
 ## Documentation
 
-- [Usage Guide](./USAGE.md) - Complete usage guide with examples and best practices
-- [Architecture](./ARCHITECTURE.md) - System design and diagrams
-- [Learning Notes](./LEARNINGS/) - Step-by-step implementation guide and agentic AI concepts
-- [Changelog](./CHANGELOG.md) - Version history
+- [Usage Guide](./USAGE.md) — Detailed usage, configuration, and troubleshooting
+- [Architecture](./ARCHITECTURE.md) — System design, diagrams, and design patterns
+- [Changelog](./CHANGELOG.md) — Version history
+- [Learning Notes](./LEARNINGS/) — Step-by-step implementation journey & agentic AI concepts
 
 ## License
 
-MIT - See [LICENSE](./LICENSE) for details
+MIT — See [LICENSE](./LICENSE) for details

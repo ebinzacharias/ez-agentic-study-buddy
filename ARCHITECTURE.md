@@ -4,25 +4,34 @@
 
 ```mermaid
 graph TB
-    subgraph "StudyBuddyAgent"
+    subgraph Web["Web Layer"]
+        UI[React UI<br/>Vite + Upload Flow]
+        API[FastAPI Backend<br/>Session Management]
+        CL[Content Loader<br/>PDF / MD / TXT / JSON]
+    end
+
+    subgraph Core["Agent Core"]
         Agent[StudyBuddyAgent]
         ReAct[ReAct Loop<br/>observe → decide → act]
         Agent --> ReAct
     end
     
-    LLM[LLM Client<br/>Groq/OpenAI]
+    LLM[LLM Client<br/>Groq / OpenAI]
     State[State Manager<br/>StudySessionState<br/>ConceptProgress]
     ToolExec[ToolExecutor<br/>Tool Binding & Execution]
-    Tools[Tools<br/>Planner ✅, Teacher ✅, Quizzer ✅, Evaluator ✅, Adapter ✅]
+    Tools[Tools<br/>Planner, Teacher, Quizzer, Evaluator, Adapter]
     
+    UI --> API
+    API --> CL
+    API --> Agent
     Agent --> LLM
     Agent --> State
     Agent --> ToolExec
     ToolExec --> LLM
     ToolExec --> Tools
     
-    style Agent fill:#e1f5ff
-    style ReAct fill:#fff4e1
+    style Web fill:#e1f5ff
+    style Core fill:#fff4e1
     style LLM fill:#e8f5e9
     style State fill:#f3e5f5
     style ToolExec fill:#fff9c4
@@ -156,6 +165,50 @@ classDiagram
 ```
 
 ### Core Components
+
+#### 0. Web Layer
+
+##### FastAPI Backend (`webapi/main.py`)
+- **Role**: HTTP interface between the React UI and the agent core
+- **Responsibilities**:
+  - In-memory session management (`SESSIONS` dict keyed by UUID)
+  - File upload parsing via Content Loader
+  - Topic auto-suggestion from uploaded content (`_suggest_topic`)
+  - Error classification for user-friendly messages (`_classify_error`)
+  - Next-action recommendation after each step (`_get_next_action`)
+  - Session expiry detection with clear HTTP 404 responses
+
+##### Content Loader (`agent/utils/content_loader.py`)
+- **Role**: Parse uploaded files into structured content for the agent
+- **Supported formats**: `.txt`, `.md`, `.json`, `.pdf` (optional, requires PyMuPDF)
+- **Output**: `LoadedContent` Pydantic model with `ContentSection` items
+- **Features**:
+  - Markdown heading-based section splitting
+  - JSON key-value and nested structure parsing
+  - Word count and summary context helpers
+  - File validation (existence, extension, size)
+
+##### React Frontend (`webui/`)
+- **Role**: Upload-first study interface
+- **Stack**: React + Vite
+- **Flow**: Upload file → auto-create session → plan → teach → quiz → evaluate
+
+##### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/` | Health check |
+| `GET`  | `/ping` | Liveness probe |
+| `POST` | `/upload` | Upload & parse a single file |
+| `POST` | `/session/from-upload` | Upload file(s) → create session with auto-suggested topic |
+| `POST` | `/session` | Create session from previously uploaded content |
+| `GET`  | `/session/{id}` | Get session state |
+| `POST` | `/session/{id}/upload` | Upload additional file to existing session |
+| `POST` | `/session/{id}/plan` | Generate learning path |
+| `POST` | `/session/{id}/teach` | Teach a concept |
+| `POST` | `/session/{id}/quiz` | Generate a quiz |
+| `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
+| `GET`  | `/session/{id}/next-action` | Recommended next step |
 
 #### 1. StudyBuddyAgent (`agent/core/agent.py`)
 - **Role**: Main orchestrator
@@ -354,7 +407,9 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant User
+    participant Browser as React UI
+    participant API as FastAPI Backend
+    participant CL as Content Loader
     participant Agent as StudyBuddyAgent
     participant State as StudySessionState
     participant DecisionRules
@@ -362,10 +417,16 @@ sequenceDiagram
     participant ToolExec as ToolExecutor
     participant Tools as Agent Tools
     participant LLM
-    
-    User->>Agent: Initialize with Topic
-    Agent->>State: Create Session State
-    Agent->>LLM: Initialize LLM Client
+
+    Browser->>API: POST /session/from-upload (file)
+    API->>CL: Parse file
+    CL-->>API: LoadedContent
+    API->>API: _suggest_topic(content)
+    API->>State: Create Session State
+    API-->>Browser: { session_id, topic, content_preview }
+
+    Browser->>API: POST /session/{id}/plan
+    API->>Agent: plan(topic, content)
     
     loop ReAct Loop
         Agent->>State: OBSERVE: Read State
@@ -388,7 +449,9 @@ sequenceDiagram
         Agent->>Agent: Check Completion
         
         alt Session Complete
-            Agent->>User: Return Final State
+            Agent-->>API: Return Final State
+            API->>API: _get_next_action(state)
+            API-->>Browser: { result, next_action }
         end
     end
 ```
@@ -466,15 +529,19 @@ step_chain = (
 
 ### ✅ Implemented Components
 
+- **Web Layer**: FastAPI backend with session management, content loading, upload-first UX
+- **React Frontend**: Vite-based upload → plan → teach → quiz → evaluate UI
+- **Content Loader**: Parses `.txt`, `.md`, `.json`, optional `.pdf`
 - **Core Agent**: StudyBuddyAgent with ReAct loop using LCEL chains
 - **State Management**: Complete state tracking with Pydantic models
-- **Decision Rules**: Rule-based decision making with explicit logic
+- **Decision Rules**: Rule-based decision making with explicit logic and next-action guidance
 - **Retry Manager**: Retry mechanisms with alternative strategies
 - **Quiz Workflow**: Complete quiz generation and evaluation workflow
 - **All Tools**: Planner, Teacher, Quizzer, Evaluator, Adapter
 - **LCEL Chains**: Declarative chain composition for ReAct loop
-- **Error Handling**: Comprehensive error handling and edge cases
-- **Testing**: End-to-end tests and edge case validation
+- **Error Handling**: Comprehensive error handling, session expiry detection, and edge cases
+- **Testing**: 19 test files — end-to-end, unit, schema validation, workflow interaction tests
+- **CI Pipeline**: GitHub Actions with ruff, mypy, and pytest
 
 ### 🔄 Learning Flow
 
