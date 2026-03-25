@@ -93,8 +93,9 @@ Requirements:
 - Each question should test understanding of {concept_name}
 - Questions should be appropriate for {difficulty_level} level
 - Include a mix of question types if multiple types specified
-- For multiple choice questions, provide 4 options (A, B, C, D)
-- For short answer questions, provide clear correct answer
+- For multiple choice questions, provide 4 options as full text strings (NOT letters like A/B/C/D)
+- The correct_answer field MUST be the FULL option text (e.g. "Generating Human-Like Text"), NOT a letter
+- For short answer questions, provide a clear, concise correct answer
 - Include brief explanation for each answer
 
 Return the quiz in this EXACT JSON format:
@@ -106,8 +107,8 @@ Return the quiz in this EXACT JSON format:
             "question_number": 1,
             "question_type": "multiple_choice",
             "question": "Question text here?",
-            "options": ["Option A", "Option B", "Option C", "Option D"],
-            "correct_answer": "Option A",
+            "options": ["Full text of option 1", "Full text of option 2", "Full text of option 3", "Full text of option 4"],
+            "correct_answer": "Full text of option 1",
             "explanation": "Brief explanation here"
         }},
         {{
@@ -122,6 +123,7 @@ Return the quiz in this EXACT JSON format:
     "total_questions": {num_questions}
 }}
 
+IMPORTANT: correct_answer for multiple_choice MUST be the exact full text of one of the options, never a letter.
 Return ONLY valid JSON, no additional text before or after."""
 
     response = llm.invoke(prompt)
