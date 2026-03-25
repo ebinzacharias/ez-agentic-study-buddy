@@ -38,11 +38,19 @@ export default function App() {
   const fmtError = (data) => {
     const code = data?.error_code;
     const msg = data?.error || "Unknown error";
+    if (code === "session_expired") return `🔄 ${msg}`;
     if (code === "rate_limit") return `⏳ Rate limited — ${msg}`;
     if (code === "timeout")    return `⌛ Timeout — ${msg}`;
     if (code === "auth_error") return `🔑 Auth error — ${msg}`;
     if (code === "llm_error")  return `🤖 LLM error — ${msg}`;
     return msg;
+  };
+
+  const handleApiError = (data) => {
+    if (data?.error_code === "session_expired") {
+      resetSession();
+    }
+    throw new Error(fmtError(data));
   };
 
   const resetSession = () => {
@@ -124,7 +132,7 @@ export default function App() {
         body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) handleApiError(data);
       setPlanResult(data);
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
@@ -155,7 +163,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) handleApiError(data);
       setTeachResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
@@ -186,7 +194,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) handleApiError(data);
       setQuizResult(data);
     } catch (err) {
       setError(err.message);
@@ -236,7 +244,7 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) handleApiError(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
