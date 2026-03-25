@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -68,6 +68,10 @@ class StudySessionState(BaseModel):
     session_start_time: datetime = Field(default_factory=datetime.now)
     overall_difficulty: DifficultyLevel = DifficultyLevel.BEGINNER
     concepts_planned: list[str] = Field(default_factory=list)
+    loaded_content: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Serialised LoadedContent from user-uploaded study materials",
+    )
 
     def add_concept(self, concept_name: str, difficulty: DifficultyLevel = DifficultyLevel.BEGINNER) -> None:
         if concept_name not in self.concepts:
@@ -126,4 +130,23 @@ class StudySessionState(BaseModel):
         if not scores:
             return None
         return sum(scores) / len(scores)
+
+    # -- Content loader helpers ------------------------------------------------
+
+    def set_loaded_content(self, content_dict: dict[str, Any]) -> None:
+        """Store serialised LoadedContent from the content loader."""
+        self.loaded_content = content_dict
+
+    def has_loaded_content(self) -> bool:
+        """Return True if user-uploaded material is available."""
+        return self.loaded_content is not None
+
+    def get_content_context(self, max_chars: int = 2000) -> str:
+        """Return a truncated string of the loaded material for LLM prompts."""
+        if self.loaded_content is None:
+            return ""
+        raw = self.loaded_content.get("raw_text", "")
+        if len(raw) <= max_chars:
+            return raw
+        return raw[:max_chars] + "\n\n[... content truncated ...]"
 

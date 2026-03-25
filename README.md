@@ -15,7 +15,8 @@
 - **Tool Integration:** Agents use modular tools for planning, teaching, quizzing, evaluating, and adapting.
 - **State Management:** Tracks session progress and adapts difficulty using Pydantic models.
 - **Retry & Error Handling:** Retry logic and alternative teaching strategies for robustness.
-- **Content Loading:** (Planned) User-uploaded materials folder is scaffolded, but current workflows use built-in examples.
+- **Content Loading:** Load and parse user materials (`.txt`, `.md`, `.json`, optional `.pdf`).
+- **Minimal Web UI:** FastAPI upload endpoint + React UI for uploading and previewing parsed content.
 
 
 ## Tech Stack
@@ -42,6 +43,23 @@ uv run python scripts/test_llm.py
 ```
 
 See [USAGE.md](USAGE.md) for more details and examples.
+
+## Minimal Web UI (Content Loader)
+
+Backend (FastAPI):
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[web]"
+.venv\Scripts\python.exe -m uvicorn webapi.main:app --reload --port 8000
+```
+
+Frontend (React):
+
+```powershell
+cd webui
+npm install
+npm run dev
+```
 
 EZ Agentic Study Buddy is an open-source, modular platform for building and running multi-agent AI study assistants. The MVP enables any user to:
 - Install the repo and run it locally with minimal setup
