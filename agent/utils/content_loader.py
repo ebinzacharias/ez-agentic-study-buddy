@@ -108,7 +108,7 @@ def load_pdf_file(file_path: str) -> LoadedContent:
     _validate_file(path, {".pdf"})
 
     try:
-        import fitz  # type: ignore[import-not-found]  # optional pymupdf
+        import fitz  # type: ignore[import-untyped]
     except ImportError:
         raise ImportError(
             "pymupdf is required to load PDF files. "

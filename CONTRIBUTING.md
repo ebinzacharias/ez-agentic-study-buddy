@@ -109,7 +109,7 @@ uv run mypy .
 uv run pytest
 ```
 
-**Ruff** is pinned to **0.11.7** in `[dependency-groups].dev` and matches the revision **v0.11.7** in `.pre-commit-config.yaml`. **mypy** uses `ignore_missing_imports = false` in `pyproject.toml` so missing stubs are reported project-wide; the optional **pymupdf** import (`fitz`) is annotated with `# type: ignore[import-not-found]` because that dependency is not in the default lockfile. **`return-value`** and **`operator`** remain disabled because FastAPI handlers often return `JSONResponse` alongside `dict` return types, and LangChain runnables are typed narrowly enough to produce noisy false positives until those callsites are refined.
+**Ruff** is pinned to **0.11.7** in `[dependency-groups].dev` and matches the revision **v0.11.7** in `.pre-commit-config.yaml`. **mypy** uses `ignore_missing_imports = false` in `pyproject.toml` so missing stubs are reported project-wide; **pymupdf** (import name `fitz`) is a declared dependency but ships without types, so `content_loader.py` uses `# type: ignore[import-untyped]` on that import. **`return-value`** and **`operator`** remain disabled because FastAPI handlers often return `JSONResponse` alongside `dict` return types, and LangChain runnables are typed narrowly enough to produce noisy false positives until those callsites are refined.
 
 These same checks run in CI on every PR.
 
