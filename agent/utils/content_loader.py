@@ -60,6 +60,31 @@ class LoadedContent(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _pdf_plausible_embedded_title(doc: object) -> str:
+    """Return PDF /Info Title when it looks like a real document name, else empty."""
+    try:
+        md = getattr(doc, "metadata", None) or {}
+        raw = (md.get("title") or "").strip()
+    except Exception:
+        return ""
+    if len(raw) < 4 or len(raw) > 180:
+        return ""
+    if sum(1 for c in raw if c.isalpha()) < 4:
+        return ""
+    low = raw.lower()
+    noise = (
+        "untitled",
+        "microsoft word",
+        "microsoft powerpoint",
+        "microsoft excel",
+        "adobe acrobat",
+        "no title",
+    )
+    if any(n in low for n in noise):
+        return ""
+    return raw
+
+
 def load_text_file(file_path: str) -> LoadedContent:
     """Load a plain .txt file."""
     path = Path(file_path)
@@ -133,10 +158,13 @@ def load_pdf_file(file_path: str) -> LoadedContent:
             )
             all_text_parts.append(page_text.strip())
 
+    embedded_title = _pdf_plausible_embedded_title(doc)
     doc.close()
 
+    title = embedded_title or path.stem
+
     return LoadedContent(
-        title=path.stem,
+        title=title,
         source_file=path.name,
         sections=sections,
         raw_text="\n\n".join(all_text_parts),
@@ -144,6 +172,7 @@ def load_pdf_file(file_path: str) -> LoadedContent:
             "format": "pdf",
             "size_bytes": path.stat().st_size,
             "page_count": len(sections),
+            **({"pdf_embedded_title": embedded_title} if embedded_title else {}),
         },
     )
 
