@@ -1,88 +1,88 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import SourcePreviewModal from "./SourcePreviewModal";
+
+function norm(s) {
+  return (s || "").trim().toLowerCase();
+}
 
 export default function SessionControls({
   sessionId,
+  apiBaseUrl,
+  uploadResult,
   topic,
   suggestedTopic,
   difficulty,
   loading,
-  onTopicChange,
   onDifficultyChange,
   onReset,
 }) {
-  const [copied, setCopied] = useState(false);
-  const shortId = sessionId.length > 12
-    ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`
-    : sessionId;
+  const [sourceOpen, setSourceOpen] = useState(false);
 
-  const copyId = async () => {
-    try {
-      await navigator.clipboard.writeText(sessionId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  };
+  const suggestedDiffers =
+    suggestedTopic &&
+    norm(suggestedTopic) !== norm(topic);
+
+  const fileLabel = useMemo(() => {
+    const names = uploadResult?.materials
+      ?.map((m) => m.filename)
+      .filter(Boolean);
+    if (!names?.length) return "";
+    return names.join(", ");
+  }, [uploadResult]);
 
   return (
     <section className="session-workspace-hero" aria-label="Current session">
       <div className="session-workspace-hero__inner">
         <div className="session-hero-banner">
-          <div className="session-hero-banner__text">
-            <p className="session-hero-eyebrow">Session ready</p>
-            <h2 className="session-hero-heading">
-              Your material is loaded — set topic and difficulty, then choose a mode below.
-            </h2>
+          <p className="session-hero-summary sr-only">
+            Session topic and difficulty. View extracted source text or start a new upload.
+          </p>
+          <div className="session-hero-banner__actions" role="group" aria-label="Session actions">
+            <button
+              type="button"
+              className="btn-session-source"
+              onClick={() => setSourceOpen(true)}
+              disabled={loading || !sessionId}
+            >
+              View source
+            </button>
+            <button
+              type="button"
+              className="btn-session-reset-top"
+              onClick={onReset}
+              disabled={loading}
+            >
+              New upload &amp; reset session
+            </button>
           </div>
-          <button
-            type="button"
-            className="btn-session-reset-top"
-            onClick={onReset}
-            disabled={loading}
-          >
-            New upload &amp; reset session
-          </button>
         </div>
 
         <div className="session-metadata-card session-metadata-card--hero">
-          <div className="session-metadata-card__header">
-            <div className="session-id-label">
-              <span className="session-id-key">Session</span>
-              <code className="session-id-value" title={sessionId}>
-                {shortId}
-              </code>
-            </div>
-            <button
-              type="button"
-              className="btn-session-copy btn-small"
-              onClick={copyId}
-              disabled={!sessionId}
-              aria-label="Copy full session ID to clipboard"
-            >
-              {copied ? "Copied" : "Copy ID"}
-            </button>
-          </div>
-
           <div className="row row--stack-sm session-metadata-card__fields">
             <div className="field">
-              <label htmlFor="session-topic">Topic</label>
-              <input
-                id="session-topic"
-                className="input-lab"
-                value={topic}
-                onChange={(e) => onTopicChange(e.target.value)}
-                placeholder="e.g., Python Basics"
-                autoComplete="off"
-              />
+              <label htmlFor="session-topic-display">Topic</label>
+              <p id="session-topic-hint" className="session-field-hint">
+                Pulled from your file when this session started.
+              </p>
+              <div
+                id="session-topic-display"
+                className="session-topic-readonly"
+                aria-describedby="session-topic-hint"
+              >
+                {topic.trim() ? topic : "—"}
+              </div>
             </div>
             <div className="field">
               <label htmlFor="session-difficulty">Difficulty</label>
+              <p id="session-difficulty-hint" className="session-field-hint">
+                Applied to Plan, Learn, and Quiz calls from this session.
+              </p>
               <select
                 id="session-difficulty"
-                className="input-lab"
+                className="input-lab session-field-control"
                 value={difficulty}
                 onChange={(e) => onDifficultyChange(e.target.value)}
+                aria-describedby="session-difficulty-hint"
               >
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
@@ -91,14 +91,22 @@ export default function SessionControls({
             </div>
           </div>
 
-          {suggestedTopic ? (
+          {suggestedDiffers ? (
             <p className="rail-meta session-metadata-card__suggested">
-              <span className="rail-meta-label">Suggested topic</span>
+              <span className="rail-meta-label">Model suggestion</span>
               <span className="rail-meta-value">{suggestedTopic}</span>
             </p>
           ) : null}
         </div>
       </div>
+
+      <SourcePreviewModal
+        open={sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        apiBaseUrl={apiBaseUrl}
+        sessionId={sessionId}
+        fileLabel={fileLabel}
+      />
     </section>
   );
 }

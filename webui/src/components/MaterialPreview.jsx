@@ -20,8 +20,8 @@ export default function MaterialPreview({ uploadResult, className = "", variant 
         <>
           <h3>Section titles</h3>
           <ul>
-            {uploadResult.section_titles.length === 0 && <li>(none found)</li>}
-            {uploadResult.section_titles.map((t, i) => (
+            {(uploadResult.section_titles ?? []).length === 0 && <li>(none found)</li>}
+            {(uploadResult.section_titles ?? []).map((t, i) => (
               <li key={i}>{t}</li>
             ))}
           </ul>

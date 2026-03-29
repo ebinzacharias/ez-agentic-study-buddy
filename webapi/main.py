@@ -371,6 +371,28 @@ def get_session(session_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/session/{session_id}/source")
+def get_session_source(session_id: str) -> dict[str, Any]:
+    """Return extracted plain text for the material stored on this session (full document)."""
+    state = SESSIONS.get(session_id)
+    if state is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    if not state.has_loaded_content() or state.loaded_content is None:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "No content uploaded for this session"},
+        )
+    lc = state.loaded_content
+    raw = str(lc.get("raw_text") or "")
+    meta = lc.get("metadata") or {}
+    sources = meta.get("sources") or []
+    filenames: list[str] = []
+    for item in sources:
+        if isinstance(item, dict) and item.get("filename"):
+            filenames.append(str(item["filename"]))
+    return {"text": raw, "filenames": filenames}
+
+
 @app.post("/session/{session_id}/upload")
 async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> dict[str, Any]:
     state = SESSIONS.get(session_id)
