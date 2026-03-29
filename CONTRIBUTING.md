@@ -6,6 +6,13 @@ Whether you're fixing a bug, improving the UI, adding a feature, or just cleanin
 
 ---
 
+## Security
+
+- Put **API keys only in your local `.env`** (copied from `.env.example`). **Do not commit `.env`**, real keys, or token-bearing URLs.
+- **Never** add live **Groq** or **OpenAI** keys to the repository, sample configs, tests, or documentation. If a key was ever pushed or leaked, **rotate it immediately** in the provider’s console and assume it is no longer secret.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -22,20 +29,21 @@ Whether you're fixing a bug, improving the UI, adding a feature, or just cleanin
 git clone https://github.com/<your-username>/ez-agentic-study-buddy.git
 cd ez-agentic-study-buddy
 
-# 2. Install Python dependencies (includes FastAPI backend)
-uv sync --extra web
+# 2. Install Python dependencies (backend + dev: ruff, mypy, pytest).
+#    uv.lock is committed — use --locked so your env matches CI.
+uv sync --extra web --group dev --locked
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env → add your GROQ_API_KEY
+# Edit .env → add your GROQ_API_KEY (never commit .env — see Security above)
 
-# 4. Install frontend dependencies
+# 4. Install frontend dependencies (lockfile lives in webui/ only)
 cd webui
 npm install
 cd ..
 
 # 5. Verify everything works
-uv run python -m pytest -q
+uv run pytest -q
 ```
 
 ### Running the App
@@ -93,20 +101,15 @@ git checkout -b feature/your-feature-name
 
 ### 4. Run the Checks Locally
 
-Before pushing, make sure everything passes:
+Before pushing, make sure everything passes (after `uv sync --extra web --group dev --locked`):
 
 ```bash
-# Lint
-uv pip install ruff
 uv run ruff check .
-
-# Type check
-uv pip install mypy
 uv run mypy .
-
-# Tests
-uv run python -m pytest -q
+uv run pytest
 ```
+
+**Ruff** is pinned to **0.11.7** in `[dependency-groups].dev` and matches the revision **v0.11.7** in `.pre-commit-config.yaml`. **mypy** uses `ignore_missing_imports = false` in `pyproject.toml` so missing stubs are reported project-wide; the optional **pymupdf** import (`fitz`) is annotated with `# type: ignore[import-not-found]` because that dependency is not in the default lockfile. **`return-value`** and **`operator`** remain disabled because FastAPI handlers often return `JSONResponse` alongside `dict` return types, and LangChain runnables are typed narrowly enough to produce noisy false positives until those callsites are refined.
 
 These same checks run in CI on every PR.
 
@@ -142,8 +145,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design and diagrams.
 
 ## Code Style
 
-- **Python**: We use [ruff](https://docs.astral.sh/ruff/) for linting. No special config — defaults are fine.
-- **Types**: [mypy](https://mypy-lang.org/) for type checking. Use type hints on function signatures.
+- **Python**: We use [ruff](https://docs.astral.sh/ruff/) **0.11.7** (same as [pre-commit](https://pre-commit.com/) and CI). No `ruff.toml` — project defaults are fine.
+- **Types**: [mypy](https://mypy-lang.org/) for type checking. Use type hints on function signatures. See §4 above for why a subset of error codes is suppressed.
 - **Models**: Use [Pydantic](https://docs.pydantic.dev/) for data models and validation.
 - **Frontend**: Standard React/JSX. No strict formatter enforced yet — just keep it readable.
 

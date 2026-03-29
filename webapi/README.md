@@ -9,8 +9,8 @@ Full setup (`.env`, API keys) is in the [repository root README](../README.md).
 From **repository root** (recommended — uses `uv` like the rest of the project):
 
 ```bash
-uv sync --extra web
-cp .env.example .env   # once: set GROQ_API_KEY
+uv sync --extra web --locked
+cp .env.example .env   # once: set GROQ_API_KEY (never commit .env)
 uv run uvicorn webapi.main:app --reload --host 127.0.0.1 --port 8000
 ```
 

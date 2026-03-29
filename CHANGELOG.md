@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Reproducible Python env**: `uv.lock` is committed; `.gitignore` no longer excludes it. Use `uv sync --locked` (CI uses `uv sync --extra web --group dev --locked`).
+- **Dev dependencies**: `[dependency-groups].dev` pins **ruff 0.11.7** (matches pre-commit **v0.11.7**), plus mypy and pytest; CI no longer installs tools with unversioned `uv pip install`.
+- **CI**: Python syntax check fails the workflow on compile errors; **mypy** stricter defaults (`ignore_missing_imports = false`) with a narrow ignore for optional `fitz`.
+- **Docs**: README / CONTRIBUTING security notes for `.env` and key rotation; npm lockfile only under `webui/`.
+
 ### Added
 - **FastAPI Web Backend** (`webapi/main.py`)
   - Upload-first UX: upload file(s) → auto-create session with suggested topic
@@ -37,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Total: 19 test files under `scripts/`
 - **CI pipeline** (`.github/workflows/ci.yml`)
   - GitHub Actions: ruff lint, mypy type check, pytest
-  - Uses `uv sync --extra web` to install FastAPI dependencies
+  - Uses `uv sync --extra web --group dev --locked` for dependencies and pinned tooling
   - `pytest.importorskip("fastapi")` guards for web-dependent tests
   - `pytest.mark.skipif(not GROQ_API_KEY)` for LLM-dependent tests
 
