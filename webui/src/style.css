@@ -1295,28 +1295,31 @@ button:not(.btn-shadcn):focus-visible {
 /* Footer */
 .site-footer {
   margin-top: auto;
-  padding: var(--space-section) var(--space-5);
-  border-top: 1px solid var(--color-border);
+  padding: 40px var(--space-5);
+  border-top: 1px solid #e2e8f0;
   text-align: center;
   background: var(--color-bg-surface);
 }
 
-.site-footer p {
-  margin: var(--space-2) 0;
+.site-footer__primary {
+  margin: 0 auto var(--space-2);
   max-width: var(--layout-outer-max);
-  margin-left: auto;
-  margin-right: auto;
-  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text-secondary);
+  font-weight: 500;
+  color: #718096;
 }
 
 .site-footer__meta {
+  margin: 0 auto;
   max-width: var(--layout-outer-max);
-  margin-left: auto;
-  margin-right: auto;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #718096;
+  opacity: 0.7;
 }
 
 /* Legacy / util */
