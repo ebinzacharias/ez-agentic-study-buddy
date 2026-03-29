@@ -9,43 +9,35 @@ export default function PlanStep({
   onPlan,
 }) {
   return (
-    <>
-      <div className="card">
-        <div className="row">
-          <div className="field">
-            <label>Max concepts</label>
-            <input
-              type="number"
-              min="1"
-              max="25"
-              value={maxConcepts}
-              onChange={(e) => onMaxConceptsChange(Number(e.target.value) || 10)}
-            />
-          </div>
-          <div className="field actions">
-            <label>&nbsp;</label>
-            <button type="button" onClick={onPlan} disabled={disabled || loading}>
-              Plan Learning Path
-            </button>
-          </div>
+    <div className="card card--stage">
+      <div className="row">
+        <div className="field">
+          <label>Max concepts</label>
+          <input
+            type="number"
+            min="1"
+            max="25"
+            value={maxConcepts}
+            onChange={(e) => onMaxConceptsChange(Number(e.target.value) || 10)}
+          />
         </div>
-        <div className="hint">
-          Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set.
+        <div className="field actions field--primary-action">
+          <label>&nbsp;</label>
+          <button type="button" onClick={onPlan} disabled={disabled || loading}>
+            Plan Learning Path
+          </button>
         </div>
       </div>
-
+      <div className="hint">
+        Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set on the API server.
+      </div>
       {planResult && (
-        <div className="result">
-          <h2>Learning Path</h2>
-          <ul>
-            {planResult.concepts?.map((c) => (
-              <li key={`${c.order}-${c.concept_name}`}>
-                {c.order}. {c.concept_name}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="plan-status" role="status">
+          <strong>Path ready.</strong>{" "}
+          {planResult.concepts?.length ?? 0} concepts in order — choose one in the
+          session panel to teach or quiz.
+        </p>
       )}
-    </>
+    </div>
   );
 }
