@@ -331,18 +331,28 @@ export default function App() {
 
       <header className="site-header">
         <div className="site-header__inner">
-          <div className="brand">
-            <p className="brand__eyebrow">Adaptive study</p>
-            <h1 className="brand__title">EZ Study Buddy</h1>
-            <p className="brand__tagline">
-              Upload your materials. Plan a path. Learn with grounded quizzes.
-            </p>
+          <div className="site-header__balance" aria-hidden="true" />
+          <div className="site-header__focus">
+            <div className="brand brand--showpiece">
+              <p className="brand__tagline">
+                Upload. Plan. Learn. Grounded in your data.
+              </p>
+              <h1 className="brand__title">
+                <span className="brand__title-ez" aria-label="Easy">
+                  EZ
+                </span>
+                <span className="brand__title-rest">Study Lab</span>
+              </h1>
+            </div>
           </div>
-          {showRuntimeBadge ? (
-            <span className="env-badge" title="Runtime hint from build env">
-              Local · Groq
-            </span>
-          ) : null}
+          <aside className="site-header__aside" aria-label="System status">
+            <span className="header-version-badge">v1.0 · Active</span>
+            {showRuntimeBadge ? (
+              <span className="env-badge" title="Runtime hint from build env">
+                Local · Groq
+              </span>
+            ) : null}
+          </aside>
         </div>
       </header>
 
@@ -556,7 +566,7 @@ export default function App() {
 
       <footer className="site-footer">
         <p>
-          EZ Study Buddy — adaptive learning studio. © {new Date().getFullYear()}
+          EZ Study Lab — adaptive learning studio. © {new Date().getFullYear()}
         </p>
         <p className="site-footer__meta">Open materials, local session, rule-based scoring.</p>
       </footer>
