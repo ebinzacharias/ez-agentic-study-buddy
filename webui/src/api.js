@@ -1,5 +1,5 @@
 /**
- * Shared API helpers for the Study Buddy frontend.
+ * Shared API helpers for the EZ Study Lab frontend.
  */
 
 /** Format an API error response into a user-friendly string. */
