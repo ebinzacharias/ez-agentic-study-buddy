@@ -12,8 +12,8 @@ import PlanStep from "./components/PlanStep";
 import TeachStep from "./components/TeachStep";
 import QuizStep from "./components/QuizStep";
 import NextActionBanner from "./components/NextActionBanner";
-
-const LEARN_TABS = ["plan", "teach", "quiz"];
+import ModeSwitcher from "./components/ModeSwitcher";
+import QuizProgressTracker from "./components/QuizProgressTracker";
 
 export default function App() {
   const apiBaseUrl = useMemo(
@@ -133,11 +133,15 @@ export default function App() {
     }
   };
 
-  const runPlan = async () => {
+  const runPlan = async (maxConceptsOverride) => {
     if (!sessionId) {
       setError({ title: "Upload material first" });
       return;
     }
+    const maxConceptsToUse =
+      typeof maxConceptsOverride === "number" && !Number.isNaN(maxConceptsOverride)
+        ? maxConceptsOverride
+        : maxConcepts;
     setLoading(true);
     resetErrors();
     clearDownstream();
@@ -148,7 +152,7 @@ export default function App() {
         body: JSON.stringify({
           topic,
           difficulty_level: difficulty,
-          max_concepts: maxConcepts,
+          max_concepts: maxConceptsToUse,
         }),
       });
       const data = await resp.json();
@@ -170,7 +174,7 @@ export default function App() {
       return;
     }
     if (!selectedConcept.trim()) {
-      setError({ title: "Pick a concept to teach" });
+      setError({ title: "Pick a concept to learn" });
       return;
     }
     setLoading(true);
@@ -303,22 +307,13 @@ export default function App() {
     setQuizConcept("");
   };
 
-  const stepperState = (id) => {
-    const current = LEARN_TABS.indexOf(activeLearnTab);
-    const idx = LEARN_TABS.indexOf(id);
-    if (idx === current) return "current";
-    if (id === "plan" && planResult) return "complete";
-    if (id === "teach" && teachResult && activeLearnTab === "quiz") return "complete";
-    return "upcoming";
-  };
-
   let mobilePrimary = null;
   if (sessionId && !loading) {
     if (activeLearnTab === "plan") {
-      mobilePrimary = { label: "Plan learning path", onClick: runPlan, disabled: false };
+      mobilePrimary = { label: "Generate Study Path", onClick: runPlan, disabled: false };
     } else if (activeLearnTab === "teach") {
       mobilePrimary = {
-        label: "Teach concept",
+        label: "Learn concept",
         onClick: runTeach,
         disabled: !selectedConcept.trim(),
       };
@@ -343,66 +338,59 @@ export default function App() {
         Skip to main content
       </a>
 
-      <header className="site-header">
-        <div className="site-header__inner">
-          <div className="site-header__balance" aria-hidden="true" />
-          <div className="site-header__focus">
-            <div className="brand brand--showpiece">
-              <p className="brand__tagline">
-                Upload. Plan. Learn. Grounded in your data.
-              </p>
-              <h1 className="brand__title">
-                <span className="brand__title-ez" aria-label="Easy">
-                  EZ
-                </span>
-                <span className="brand__title-rest">Study Lab</span>
-              </h1>
-            </div>
-          </div>
-          <aside className="site-header__aside" aria-label="System status">
-            <span className="header-version-badge">v1.0 · Active</span>
-            {showRuntimeBadge ? (
-              <span className="env-badge" title="Runtime hint from build env">
-                Local · Groq
-              </span>
-            ) : null}
-          </aside>
-        </div>
-      </header>
-
-      {sessionId ? (
-        <div className="stepper-container">
-          <nav className="stepper" aria-label="Learning workflow">
-            {LEARN_TABS.map((id) => {
-              const labels = {
-                plan: "Plan",
-                teach: "Teach",
-                quiz: "Quiz",
-              };
-              const state = stepperState(id);
-              const num = LEARN_TABS.indexOf(id) + 1;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={`stepper__step stepper__step--${state}`}
-                  aria-current={state === "current" ? "step" : undefined}
-                  aria-label={`${labels[id]} step${state === "complete" ? ", completed" : ""}${state === "current" ? ", current" : ""}`}
-                  onClick={() => setActiveLearnTab(id)}
-                >
-                  <span className="stepper__index" aria-hidden="true">
-                    {state === "complete" ? "✓" : num}
+      <div className="app-top-sticky">
+        <header className="site-header">
+          <div className="site-header__inner">
+            <div className="site-header__balance" aria-hidden="true" />
+            <div className="site-header__focus">
+              <div className="brand brand--showpiece">
+                <p className="brand__tagline">
+                  Upload. Plan. Learn. Grounded in your data.
+                </p>
+                <h1 className="brand__title">
+                  <span className="brand__title-ez" aria-label="Easy">
+                    EZ
                   </span>
-                  <span className="stepper__label">{labels[id]}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      ) : null}
+                  <span className="brand__title-rest">Study Lab</span>
+                </h1>
+              </div>
+            </div>
+            <aside className="site-header__aside" aria-label="System status">
+              <span className="header-version-badge">v1.0 · Active</span>
+              {showRuntimeBadge ? (
+                <span className="env-badge" title="Runtime hint from build env">
+                  Local · Groq
+                </span>
+              ) : null}
+            </aside>
+          </div>
+        </header>
+
+        {sessionId ? (
+          <SessionControls
+            sessionId={sessionId}
+            topic={topic}
+            suggestedTopic={suggestedTopic}
+            difficulty={difficulty}
+            loading={loading}
+            onTopicChange={setTopic}
+            onDifficultyChange={setDifficulty}
+            onReset={resetSession}
+          />
+        ) : null}
+
+        {sessionId ? (
+          <ModeSwitcher
+            activeMode={activeLearnTab}
+            onChange={setActiveLearnTab}
+          />
+        ) : null}
+      </div>
 
       <main id="main-workspace" className="app-main">
-        <div className={`app-grid ${sessionId ? "app-grid--with-rail" : ""}`}>
+        <div
+          className={`app-grid ${sessionId ? `app-grid--with-session app-grid--mode-${activeLearnTab === "teach" ? "learn" : activeLearnTab}` : ""}`}
+        >
           {!sessionId ? (
             <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
               <h2 id="onboarding-heading" className="sr-only">
@@ -429,67 +417,97 @@ export default function App() {
 
           {sessionId ? (
             <>
-              <aside className="session-rail" aria-label="Session and material">
-                {error ? (
-                  <div className="workspace-error workspace-error--rail" role="alert">
+              {activeLearnTab !== "teach" ? (
+                <aside
+                  className={`session-rail ${activeLearnTab === "quiz" ? "session-rail--quiz" : "session-rail--plan"}`}
+                  aria-label={
+                    activeLearnTab === "quiz"
+                      ? "Quiz progress"
+                      : "Learning path and materials"
+                  }
+                >
+                  {activeLearnTab === "quiz" ? (
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <QuizProgressTracker
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        numQuestions={numQuestions}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {planResult?.concepts?.length ? (
+                        <div className="concept-rail card card--rail">
+                          <h2 className="concept-rail__title">Learning path</h2>
+                          <ol className="concept-rail__list">
+                            {planResult.concepts.map((c) => (
+                              <li key={`${c.order}-${c.concept_name}`}>
+                                <button
+                                  type="button"
+                                  className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                  onClick={() => selectConceptFromRail(c.concept_name)}
+                                >
+                                  <span className="concept-rail__order">{c.order}</span>
+                                  <span className="concept-rail__name">{c.concept_name}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ol>
+                          <p className="concept-rail__hint">
+                            Map concepts here, then open <strong>Learn</strong> for depth or{" "}
+                            <strong>Quiz</strong> to assess.
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {uploadResult ? (
+                        <details className="rail-details">
+                          <summary className="rail-details__summary">Material preview</summary>
+                          <MaterialPreview
+                            uploadResult={uploadResult}
+                            className="result--compact"
+                          />
+                        </details>
+                      ) : null}
+                    </>
+                  )}
+                </aside>
+              ) : null}
+
+              <section
+                className={`main-stage ${activeLearnTab === "quiz" ? "main-stage--quiz" : ""} ${activeLearnTab === "teach" ? "main-stage--learn" : ""}`}
+                aria-labelledby="stage-heading"
+              >
+                <h2 id="stage-heading" className="sr-only">
+                  Active study step
+                </h2>
+
+                {activeLearnTab === "teach" && error ? (
+                  <div className="workspace-error workspace-error--stage" role="alert">
                     <p className="workspace-error__title">{error.title}</p>
                     {error.detail ? (
                       <p className="workspace-error__detail">{error.detail}</p>
                     ) : null}
                   </div>
                 ) : null}
-                <SessionControls
-                  sessionId={sessionId}
-                  topic={topic}
-                  suggestedTopic={suggestedTopic}
-                  difficulty={difficulty}
-                  loading={loading}
-                  onTopicChange={setTopic}
-                  onDifficultyChange={setDifficulty}
-                  onReset={resetSession}
-                />
-
-                {planResult?.concepts?.length ? (
-                  <div className="concept-rail card card--rail">
-                    <h2 className="concept-rail__title">Learning path</h2>
-                    <ol className="concept-rail__list">
-                      {planResult.concepts.map((c) => (
-                        <li key={`${c.order}-${c.concept_name}`}>
-                          <button
-                            type="button"
-                            className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
-                            onClick={() => selectConceptFromRail(c.concept_name)}
-                          >
-                            <span className="concept-rail__order">{c.order}</span>
-                            <span className="concept-rail__name">{c.concept_name}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ol>
-                    <p className="concept-rail__hint">
-                      Select a concept to focus teach mode. Switch to Quiz when ready.
-                    </p>
-                  </div>
-                ) : null}
-
-                {uploadResult ? (
-                  <details className="rail-details">
-                    <summary className="rail-details__summary">Material preview</summary>
-                    <MaterialPreview
-                      uploadResult={uploadResult}
-                      className="result--compact"
-                    />
-                  </details>
-                ) : null}
-              </aside>
-
-              <section
-                className="main-stage"
-                aria-labelledby="stage-heading"
-              >
-                <h2 id="stage-heading" className="sr-only">
-                  Active study step
-                </h2>
 
                 <NextActionBanner
                   nextAction={nextAction}
@@ -497,10 +515,11 @@ export default function App() {
                   onFollow={followNextAction}
                 />
 
-                <div className="stage-panels">
+                <div key={activeLearnTab} className="stage-panels mode-panel-transition">
                   <div
                     id="panel-plan"
                     role="tabpanel"
+                    aria-labelledby="mode-tab-plan"
                     hidden={activeLearnTab !== "plan"}
                     className="stage-panel"
                   >
@@ -519,6 +538,7 @@ export default function App() {
                   <div
                     id="panel-teach"
                     role="tabpanel"
+                    aria-labelledby="mode-tab-teach"
                     hidden={activeLearnTab !== "teach"}
                     className="stage-panel"
                   >
@@ -528,6 +548,7 @@ export default function App() {
                         teachContext={teachContext}
                         teachResult={teachResult}
                         planResult={planResult}
+                        uploadResult={uploadResult}
                         loading={loading}
                         onConceptChange={setSelectedConcept}
                         onContextChange={setTeachContext}
@@ -539,6 +560,7 @@ export default function App() {
                   <div
                     id="panel-quiz"
                     role="tabpanel"
+                    aria-labelledby="mode-tab-quiz"
                     hidden={activeLearnTab !== "quiz"}
                     className="stage-panel"
                   >

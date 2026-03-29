@@ -18,7 +18,6 @@ export default function NextActionBanner({ nextAction, loading, onFollow }) {
   return (
     <aside className="next-action-banner" aria-live="polite">
       <div className="next-action-body">
-        <span className="next-action-icon" aria-hidden="true">&#x1F916;</span>
         <div>
           <span className="sr-only">Suggested next step: </span>
           <div className="next-action-reason">{nextAction.reason}</div>
