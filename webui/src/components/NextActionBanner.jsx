@@ -5,34 +5,36 @@ export default function NextActionBanner({ nextAction, loading, onFollow }) {
 
   if (nextAction.action === "session_complete") {
     return (
-      <div className="next-action-banner next-action-complete">
-        <span className="next-action-icon">&#x1F3C6;</span>
+      <aside className="next-action-banner next-action-complete" aria-live="polite">
+        <span className="next-action-icon" aria-hidden="true">&#x1F3C6;</span>
+        <span className="sr-only">Session complete. </span>
         <div className="next-action-reason">
-          {nextAction.reason || "All concepts mastered! Great work."}
+          {nextAction.reason || "All concepts mastered. Great work."}
         </div>
-      </div>
+      </aside>
     );
   }
 
   return (
-    <div className="next-action-banner">
+    <aside className="next-action-banner" aria-live="polite">
       <div className="next-action-body">
-        <span className="next-action-icon">&#x1F916;</span>
         <div>
+          <span className="sr-only">Suggested next step: </span>
           <div className="next-action-reason">{nextAction.reason}</div>
           {nextAction.concept && (
-            <div className="next-action-concept">{nextAction.concept}</div>
+            <div className="next-action-concept">Concept: {nextAction.concept}</div>
           )}
         </div>
       </div>
       <button
         type="button"
-        className="btn-secondary"
+        className="btn-secondary btn-touch"
         onClick={onFollow}
         disabled={loading}
       >
-        {nextAction.label} &rarr;
+        {nextAction.label}
+        <span aria-hidden="true"> →</span>
       </button>
-    </div>
+    </aside>
   );
 }

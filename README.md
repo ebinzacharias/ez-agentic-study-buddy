@@ -24,7 +24,7 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 | **Difficulty Adaptation** | Adapter tool adjusts difficulty up/down based on quiz performance. |
 | **Session State Tracking** | Pydantic-based state tracks progress, scores, retries, and next actions. |
 | **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
-| **Content Loading** | Parses `.txt`, `.md`, `.json`, and optionally `.pdf` (with PyMuPDF). |
+| **Content Loading** | Parses `.txt`, `.md`, `.json`, and `.pdf` (PyMuPDF is a normal dependency). |
 | **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
 | **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
 
@@ -195,4 +195,6 @@ Tests that require `GROQ_API_KEY` skip automatically in CI.
 
 ## License
 
-MIT — See [LICENSE](./LICENSE) for details
+This project is released under the [MIT License](./LICENSE). You may use, modify, and redistribute the code under those terms. If you publish a fork or portfolio copy, linking back or crediting this repository is appreciated but not required. Ideas, bug reports, and pull requests are welcome when maintainers have time to review them.
+
+For notices on adapted third-party material (not the license for the whole repo), see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
