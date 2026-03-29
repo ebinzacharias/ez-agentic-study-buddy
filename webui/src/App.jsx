@@ -565,10 +565,12 @@ export default function App() {
       ) : null}
 
       <footer className="site-footer">
-        <p>
-          EZ Study Lab — adaptive learning studio. © {new Date().getFullYear()}
+        <p className="site-footer__primary">
+          EZ Study Lab • Adaptive Learning Studio • © {new Date().getFullYear()}
         </p>
-        <p className="site-footer__meta">Open materials, local session, rule-based scoring.</p>
+        <p className="site-footer__meta">
+          Open materials, local session, rule-based scoring.
+        </p>
       </footer>
     </div>
   );
