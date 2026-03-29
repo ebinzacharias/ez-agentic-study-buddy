@@ -24,7 +24,7 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 | **Difficulty Adaptation** | Adapter tool adjusts difficulty up/down based on quiz performance. |
 | **Session State Tracking** | Pydantic-based state tracks progress, scores, retries, and next actions. |
 | **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
-| **Content Loading** | Parses `.txt`, `.md`, `.json`, and optionally `.pdf` (with PyMuPDF). |
+| **Content Loading** | Parses `.txt`, `.md`, `.json`, and `.pdf` (PyMuPDF is a normal dependency). |
 | **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
 | **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
 
@@ -50,15 +50,17 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 
 ### Install & Verify
 
+The repo includes a committed **`uv.lock`** so installs are reproducible. Use `--locked` to ensure your environment matches that file (CI does this).
+
 ```bash
 # Clone & install (includes FastAPI backend)
 git clone https://github.com/ebinzacharias/ez-agentic-study-buddy.git
 cd ez-agentic-study-buddy
-uv sync --extra web
+uv sync --extra web --locked
 
 # Configure environment
 cp .env.example .env
-# Edit .env → add your GROQ_API_KEY
+# Edit .env → add your GROQ_API_KEY (never commit .env — see Security below)
 
 # Run offline tests to verify
 uv run python -m pytest scripts/test_decision_rules.py -q
@@ -167,6 +169,11 @@ LEARNINGS/        # Step-by-step implementation notes & agentic AI concepts
 | `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
 | `GET`  | `/session/{id}/next-action` | Get recommended next step |
 
+## Security
+
+- **Never commit `.env`** or paste real **Groq**, **OpenAI**, or other API keys into the repo, issues, or screenshots. Only use `.env.example` (placeholders) in version control.
+- If a key was ever exposed in git history or a public fork, **rotate it immediately** in the provider console and treat it as compromised.
+
 ## Testing
 
 ```bash
@@ -188,4 +195,6 @@ Tests that require `GROQ_API_KEY` skip automatically in CI.
 
 ## License
 
-MIT — See [LICENSE](./LICENSE) for details
+This project is released under the [MIT License](./LICENSE). You may use, modify, and redistribute the code under those terms. If you publish a fork or portfolio copy, linking back or crediting this repository is appreciated but not required. Ideas, bug reports, and pull requests are welcome when maintainers have time to review them.
+
+For notices on adapted third-party material (not the license for the whole repo), see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

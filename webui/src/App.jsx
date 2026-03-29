@@ -1,10 +1,29 @@
-﻿import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  createUserFacingApiError,
+  errorDisplayFromCaughtMessage,
+  isSessionExpired,
+} from "./api";
+import LandingHero from "./components/LandingHero";
+import UploadStep from "./components/UploadStep";
+import MaterialPreview from "./components/MaterialPreview";
+import SessionControls from "./components/SessionControls";
+import PlanStep from "./components/PlanStep";
+import TeachStep from "./components/TeachStep";
+import QuizStep from "./components/QuizStep";
+import NextActionBanner from "./components/NextActionBanner";
+import ModeSwitcher from "./components/ModeSwitcher";
+import QuizProgressTracker from "./components/QuizProgressTracker";
 
 export default function App() {
   const apiBaseUrl = useMemo(
     () => import.meta.env.VITE_API_URL || "http://localhost:8000",
     []
   );
+
+  const showRuntimeBadge = import.meta.env.VITE_SHOW_RUNTIME_BADGE === "true";
+
+  const [activeLearnTab, setActiveLearnTab] = useState("plan");
 
   const [sessionId, setSessionId] = useState("");
   const [topic, setTopic] = useState("");
@@ -13,7 +32,7 @@ export default function App() {
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
@@ -23,35 +42,24 @@ export default function App() {
   const [teachContext, setTeachContext] = useState("");
   const [teachResult, setTeachResult] = useState(null);
 
-  // Quiz state
   const [quizConcept, setQuizConcept] = useState("");
   const [numQuestions, setNumQuestions] = useState(3);
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
 
-  // Agent recommendation
   const [nextAction, setNextAction] = useState(null);
 
-  const resetErrors = () => setError("");
+  const resetErrors = () => setError(null);
 
-  const fmtError = (data) => {
-    const code = data?.error_code;
-    const msg = data?.error || "Unknown error";
-    if (code === "session_expired") return `🔄 ${msg}`;
-    if (code === "invalid_quiz_format") return `🧩 ${msg}`;
-    if (code === "rate_limit") return `⏳ Rate limited — ${msg}`;
-    if (code === "timeout")    return `⌛ Timeout — ${msg}`;
-    if (code === "auth_error") return `🔑 Auth error — ${msg}`;
-    if (code === "llm_error")  return `🤖 LLM error — ${msg}`;
-    return msg;
-  };
-
-  const handleApiError = (data) => {
-    if (data?.error_code === "session_expired") {
+  const failResponse = (data) => {
+    if (isSessionExpired(data)) {
       resetSession();
+      const err = new Error("session expired");
+      err.sessionExpired = true;
+      throw err;
     }
-    throw new Error(fmtError(data));
+    throw createUserFacingApiError(data);
   };
 
   const resetSession = () => {
@@ -69,17 +77,29 @@ export default function App() {
     setQuizAnswers({});
     setEvalResult(null);
     setNextAction(null);
+    setActiveLearnTab("plan");
     resetErrors();
   };
 
+  const clearDownstream = (...keep) => {
+    if (!keep.includes("plan")) setPlanResult(null);
+    if (!keep.includes("teach")) setTeachResult(null);
+    if (!keep.includes("quiz")) {
+      setQuizResult(null);
+      setQuizAnswers({});
+    }
+    if (!keep.includes("eval")) setEvalResult(null);
+  };
+
+  useEffect(() => {
+    if (planResult) {
+      setActiveLearnTab((t) => (t === "plan" ? "teach" : t));
+    }
+  }, [planResult]);
+
   const handleFileChange = (e) => {
     setFile(e.target.files[0] || null);
-    setUploadResult(null);
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     resetErrors();
   };
 
@@ -88,12 +108,7 @@ export default function App() {
     if (!file) return;
     setLoading(true);
     resetErrors();
-    setUploadResult(null);
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     setSelectedConcept("");
     const formData = new FormData();
     formData.append("files", file);
@@ -105,54 +120,66 @@ export default function App() {
         body: formData,
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) failResponse(data);
       setSessionId(data.session_id);
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
       if (data.suggested_topic) setSuggestedTopic(data.suggested_topic);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const runPlan = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+  const runPlan = async (maxConceptsOverride) => {
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
+    const maxConceptsToUse =
+      typeof maxConceptsOverride === "number" && !Number.isNaN(maxConceptsOverride)
+        ? maxConceptsOverride
+        : maxConcepts;
     setLoading(true);
     resetErrors();
-    setPlanResult(null);
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream();
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
+        body: JSON.stringify({
+          topic,
+          difficulty_level: difficulty,
+          max_concepts: maxConceptsToUse,
+        }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setPlanResult(data);
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const runTeach = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
-    if (!selectedConcept.trim()) { setError("Pick a concept to teach."); return; }
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
+    if (!selectedConcept.trim()) {
+      setError({ title: "Pick a concept to learn" });
+      return;
+    }
     setLoading(true);
     resetErrors();
-    setTeachResult(null);
-    setQuizResult(null);
-    setQuizAnswers({});
-    setEvalResult(null);
+    clearDownstream("plan");
     try {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/teach`, {
         method: "POST",
@@ -164,20 +191,27 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setTeachResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const runQuiz = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
     const conceptToQuiz = quizConcept.trim() || selectedConcept.trim();
-    if (!conceptToQuiz) { setError("Enter a concept to quiz on."); return; }
+    if (!conceptToQuiz) {
+      setError({ title: "Enter a concept to quiz on" });
+      return;
+    }
     setLoading(true);
     resetErrors();
     setQuizResult(null);
@@ -195,39 +229,21 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setQuizResult(data);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const followNextAction = () => {
-    if (!nextAction) return;
-    const { action, concept } = nextAction;
-    if (action === "teach_concept" || action === "set_current_concept" || action === "add_concept") {
-      if (concept) setSelectedConcept(concept);
-      setTeachResult(null);
-      setQuizResult(null);
-      setQuizAnswers({});
-      setEvalResult(null);
-      setNextAction(null);
-    } else if (action === "generate_quiz") {
-      if (concept) setQuizConcept(concept);
-      setQuizResult(null);
-      setQuizAnswers({});
-      setEvalResult(null);
-      setNextAction(null);
-    } else if (action === "plan_learning_path") {
-      setNextAction(null);
-      runPlan();
-    }
-  };
-
   const runEvaluate = async () => {
-    if (!quizResult) { setError("Generate a quiz first."); return; }
+    if (!quizResult) {
+      setError({ title: "Generate a quiz first" });
+      return;
+    }
     setLoading(true);
     resetErrors();
     setEvalResult(null);
@@ -245,331 +261,350 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
+  const followNextAction = () => {
+    if (!nextAction) return;
+    const { action, concept } = nextAction;
+    if (action === "teach_concept" || action === "set_current_concept" || action === "add_concept") {
+      if (concept) setSelectedConcept(concept);
+      setTeachResult(null);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+      setActiveLearnTab("teach");
+    } else if (action === "generate_quiz") {
+      if (concept) setQuizConcept(concept);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setEvalResult(null);
+      setNextAction(null);
+      setActiveLearnTab("quiz");
+    } else if (action === "plan_learning_path") {
+      setNextAction(null);
+      setActiveLearnTab("plan");
+      runPlan();
+    }
+  };
+
+  const selectConceptFromRail = (name) => {
+    setSelectedConcept(name);
+    setActiveLearnTab("teach");
+    setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
+    setQuizConcept("");
+  };
+
+  let mobilePrimary = null;
+  if (sessionId && !loading) {
+    if (activeLearnTab === "plan") {
+      mobilePrimary = { label: "Generate Study Path", onClick: runPlan, disabled: false };
+    } else if (activeLearnTab === "teach") {
+      mobilePrimary = {
+        label: "Learn concept",
+        onClick: runTeach,
+        disabled: !selectedConcept.trim(),
+      };
+    } else if (!quizResult) {
+      mobilePrimary = {
+        label: "Generate quiz",
+        onClick: runQuiz,
+        disabled: !(quizConcept.trim() || selectedConcept.trim()),
+      };
+    } else {
+      mobilePrimary = {
+        label: "Submit and evaluate",
+        onClick: runEvaluate,
+        disabled: false,
+      };
+    }
+  }
+
   return (
-    <div className="container">
-      <h1>EZ-Agentic Study Buddy</h1>
-      <div className="muted">API: {apiBaseUrl}</div>
+    <div className="app-shell">
+      <a href="#main-workspace" className="skip-link">
+        Skip to main content
+      </a>
 
-      {/* Step 1: Upload */}
-      {!sessionId && (
-        <div className="card">
-          <form onSubmit={uploadAndCreateSession} className="upload-form">
-            <input
-              type="file"
-              accept=".txt,.md,.markdown,.pdf,.json"
-              onChange={handleFileChange}
-            />
-            <button type="submit" disabled={!file || loading}>
-              {loading ? "Working..." : "Upload & Start"}
-            </button>
-          </form>
-          <div className="hint">
-            Supported: TXT, MD, PDF, JSON. For PDFs, install <code>pymupdf</code> on the API server.
+      <div className="app-top-sticky">
+        <header className="site-header">
+          <div className="site-header__inner">
+            <div className="site-header__balance" aria-hidden="true" />
+            <div className="site-header__focus">
+              <div className="brand brand--showpiece">
+                <p className="brand__tagline">
+                  Upload. Plan. Learn. Grounded in your data.
+                </p>
+                <h1 className="brand__title">
+                  <span className="brand__title-ez" aria-label="Easy">
+                    EZ
+                  </span>
+                  <span className="brand__title-rest">Study Lab</span>
+                </h1>
+              </div>
+            </div>
+            <aside className="site-header__aside" aria-label="System status">
+              <span className="header-version-badge">v1.0 · Active</span>
+              {showRuntimeBadge ? (
+                <span className="env-badge" title="Runtime hint from build env">
+                  Local · Groq
+                </span>
+              ) : null}
+            </aside>
           </div>
-        </div>
-      )}
+        </header>
 
-      {error && <div className="error">{error}</div>}
+        {sessionId ? (
+          <SessionControls
+            sessionId={sessionId}
+            apiBaseUrl={apiBaseUrl}
+            uploadResult={uploadResult}
+            topic={topic}
+            suggestedTopic={suggestedTopic}
+            difficulty={difficulty}
+            loading={loading}
+            onDifficultyChange={setDifficulty}
+            onReset={resetSession}
+          />
+        ) : null}
 
-      {/* Step 2: Material preview */}
-      {uploadResult && (
-        <div className="result">
-          <h2>Material</h2>
-          {uploadResult.materials && (
-            <div className="hint">{uploadResult.materials.map((m) => m.filename).join(", ")}</div>
-          )}
-          <h3>Section Titles</h3>
-          <ul>
-            {uploadResult.section_titles.length === 0 && <li>(none found)</li>}
-            {uploadResult.section_titles.map((t, i) => <li key={i}>{t}</li>)}
-          </ul>
-          <h3>Content Preview</h3>
-          <pre className="preview">{uploadResult.preview}</pre>
-        </div>
-      )}
+        {sessionId ? (
+          <ModeSwitcher
+            activeMode={activeLearnTab}
+            onChange={setActiveLearnTab}
+          />
+        ) : null}
+      </div>
 
-      {/* Steps 3+: Session controls */}
-      {sessionId && (
-        <>
-          {/* Topic / Difficulty / Reset */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Topic (suggested)</label>
-                <input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g., Python Basics"
-                />
-              </div>
-              <div className="field">
-                <label>Difficulty</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={resetSession} disabled={loading}>New Upload</button>
-              </div>
-            </div>
-            <div className="pill">
-              Session: {sessionId}
-              {suggestedTopic ? <> &middot; Suggested: {suggestedTopic}</> : ""}
-            </div>
-          </div>
-
-          {/* Plan */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Max concepts</label>
-                <input
-                  type="number" min="1" max="25" value={maxConcepts}
-                  onChange={(e) => setMaxConcepts(Number(e.target.value) || 10)}
-                />
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={runPlan} disabled={!sessionId || loading}>
-                  Plan Learning Path
-                </button>
-              </div>
-            </div>
-            <div className="hint">
-              Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set.
-            </div>
-          </div>
-
-          {planResult && (
-            <div className="result">
-              <h2>Learning Path</h2>
-              <ul>
-                {planResult.concepts?.map((c) => (
-                  <li key={`${c.order}-${c.concept_name}`}>{c.order}. {c.concept_name}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Teach */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Concept</label>
-                {planResult ? (
-                  <select
-                    value={selectedConcept}
-                    onChange={(e) => setSelectedConcept(e.target.value)}
-                  >
-                    <option value="">Select a concept</option>
-                    {planResult.concepts.map((c) => (
-                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={selectedConcept}
-                    onChange={(e) => setSelectedConcept(e.target.value)}
-                    placeholder="e.g., LangGraph Nodes"
-                  />
-                )}
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button type="button" onClick={runTeach} disabled={!selectedConcept.trim() || loading}>
-                  Teach
-                </button>
-              </div>
-            </div>
-            <div className="field">
-              <label>Context (optional)</label>
-              <textarea
-                value={teachContext}
-                onChange={(e) => setTeachContext(e.target.value)}
-                placeholder="What do you already know? Where did you get stuck?"
+      <main id="main-workspace" className="app-main">
+        <div
+          className={`app-grid ${sessionId ? `app-grid--with-session app-grid--mode-${activeLearnTab === "teach" ? "learn" : activeLearnTab}` : ""}`}
+        >
+          {!sessionId ? (
+            <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
+              <h2 id="onboarding-heading" className="sr-only">
+                Start by uploading material
+              </h2>
+              <LandingHero />
+              <UploadStep
+                file={file}
+                loading={loading}
+                onFileChange={handleFileChange}
+                onSubmit={uploadAndCreateSession}
               />
-            </div>
-          </div>
+              {error ? (
+                <div className="workspace-error workspace-error--stage" role="alert">
+                  <p className="workspace-error__title">{error.title}</p>
+                  {error.detail ? (
+                    <p className="workspace-error__detail">{error.detail}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <MaterialPreview uploadResult={uploadResult} />
+            </section>
+          ) : null}
 
-          {teachResult && (
-            <div className="result">
-              <h2>Teaching: {teachResult.concept_name}</h2>
-              <pre className="preview">{teachResult.explanation}</pre>
-            </div>
-          )}
-
-          {/* Quiz */}
-          <div className="card">
-            <div className="row">
-              <div className="field">
-                <label>Quiz concept</label>
-                {planResult ? (
-                  <select
-                    value={quizConcept}
-                    onChange={(e) => setQuizConcept(e.target.value)}
-                  >
-                    <option value="">— Same as teach concept —</option>
-                    <option value={topic}>{topic} (entire document)</option>
-                    {planResult.concepts.map((c) => (
-                      <option key={c.concept_name} value={c.concept_name}>{c.concept_name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={quizConcept}
-                    onChange={(e) => setQuizConcept(e.target.value)}
-                    placeholder={selectedConcept || "e.g., LangGraph Nodes"}
-                  />
-                )}
-              </div>
-              <div className="field">
-                <label>Questions</label>
-                <input
-                  type="number" min="1" max="10" value={numQuestions}
-                  onChange={(e) => setNumQuestions(Number(e.target.value) || 3)}
-                />
-              </div>
-              <div className="field actions">
-                <label>&nbsp;</label>
-                <button
-                  type="button"
-                  onClick={runQuiz}
-                  disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
+          {sessionId ? (
+            <>
+              {activeLearnTab !== "teach" ? (
+                <aside
+                  className={`session-rail ${activeLearnTab === "quiz" ? "session-rail--quiz" : "session-rail--plan"}`}
+                  aria-label={
+                    activeLearnTab === "quiz"
+                      ? "Quiz progress"
+                      : "Learning path and materials"
+                  }
                 >
-                  Generate Quiz
-                </button>
-              </div>
-            </div>
-            <div className="row" style={{ marginTop: "0.5rem" }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => { setQuizConcept(topic); }}
-                disabled={!topic || loading}
-              >
-                Quiz entire document
-              </button>
-            </div>
-            <div className="hint">
-              Questions are grounded in your uploaded material.
-              Use <strong>Quiz entire document</strong> to quiz across all content.
-            </div>
-          </div>
-
-          {quizResult && (
-            <div className="result">
-              <h2>Quiz: {quizResult.concept_name}</h2>
-              {quizResult.questions?.map((q) => (
-                <div key={q.question_number} className="quiz-question">
-                  <p><strong>Q{q.question_number}.</strong> {q.question}</p>
-                  {q.options ? (
-                    <div className="quiz-options">
-                      {q.options.map((opt, i) => (
-                        <label key={i} className="quiz-option">
-                          <input
-                            type="radio"
-                            name={`q${q.question_number}`}
-                            value={opt}
-                            checked={quizAnswers[q.question_number] === opt}
-                            onChange={() => setQuizAnswers((a) => ({ ...a, [q.question_number]: opt }))}
-                          />
-                          {opt}
-                        </label>
-                      ))}
-                    </div>
+                  {activeLearnTab === "quiz" ? (
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <QuizProgressTracker
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        numQuestions={numQuestions}
+                      />
+                    </>
                   ) : (
-                    <p className="muted" style={{fontSize:"0.85em"}}>No options available for this question.</p>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={runEvaluate}
-                disabled={loading}
-                style={{ marginTop: "1rem" }}
-              >
-                {loading ? "Evaluating..." : "Submit & Evaluate"}
-              </button>
-            </div>
-          )}
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
 
-          {/* Evaluation Results */}
-          {evalResult && (
-            <div className="result">
-              <h2>Results &mdash; {evalResult.overall_percentage}%</h2>
-              <div className="score-bar">
-                <div
-                  className="score-fill"
-                  style={{ width: `${evalResult.overall_percentage}%` }}
-                />
-              </div>
-              <p className="muted">
-                {evalResult.questions_evaluated} / {evalResult.total_questions} answered &middot;{" "}
-                Score: {evalResult.total_score} / {evalResult.total_questions}
-              </p>
-              {evalResult.scores?.map((s) => {
-                const q = quizResult?.questions?.find((qq) => qq.question_number === s.question_number);
-                return (
-                  <div key={s.question_number} className={`eval-item ${s.is_correct ? "correct" : "incorrect"}`}>
-                    <strong>Q{s.question_number}</strong> &mdash; {s.feedback} ({Math.round(s.score * 100)}%)
-                    {!s.is_correct && q?.correct_answer && (
-                      <div className="correct-answer">Correct answer: <em>{q.correct_answer}</em></div>
-                    )}
+                      {planResult?.concepts?.length ? (
+                        <div className="concept-rail card card--rail">
+                          <h2 className="concept-rail__title">Learning path</h2>
+                          <ol className="concept-rail__list">
+                            {planResult.concepts.map((c) => (
+                              <li key={`${c.order}-${c.concept_name}`}>
+                                <button
+                                  type="button"
+                                  className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                  onClick={() => selectConceptFromRail(c.concept_name)}
+                                >
+                                  <span className="concept-rail__order">{c.order}</span>
+                                  <span className="concept-rail__name">{c.concept_name}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ol>
+                          <p className="concept-rail__hint">
+                            Map concepts here, then open <strong>Learn</strong> for depth or{" "}
+                            <strong>Quiz</strong> to assess.
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </aside>
+              ) : null}
+
+              <section
+                className={`main-stage ${activeLearnTab === "quiz" ? "main-stage--quiz" : ""} ${activeLearnTab === "teach" ? "main-stage--learn" : ""}`}
+                aria-labelledby="stage-heading"
+              >
+                <h2 id="stage-heading" className="sr-only">
+                  Active study step
+                </h2>
+
+                {activeLearnTab === "teach" && error ? (
+                  <div className="workspace-error workspace-error--stage" role="alert">
+                    <p className="workspace-error__title">{error.title}</p>
+                    {error.detail ? (
+                      <p className="workspace-error__detail">{error.detail}</p>
+                    ) : null}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ) : null}
 
-          {/* Agent recommendation banner */}
-          {nextAction && nextAction.action !== "session_complete" && (
-            <div className="next-action-banner">
-              <div className="next-action-body">
-                <span className="next-action-icon">&#x1F916;</span>
-                <div>
-                  <div className="next-action-reason">{nextAction.reason}</div>
-                  {nextAction.concept && (
-                    <div className="next-action-concept">{nextAction.concept}</div>
-                  )}
+                <NextActionBanner
+                  nextAction={nextAction}
+                  loading={loading}
+                  onFollow={followNextAction}
+                />
+
+                <div key={activeLearnTab} className="stage-panels mode-panel-transition">
+                  <div
+                    id="panel-plan"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-plan"
+                    hidden={activeLearnTab !== "plan"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "plan" ? (
+                      <PlanStep
+                        maxConcepts={maxConcepts}
+                        planResult={planResult}
+                        loading={loading}
+                        disabled={!sessionId}
+                        onMaxConceptsChange={setMaxConcepts}
+                        onPlan={runPlan}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-teach"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-teach"
+                    hidden={activeLearnTab !== "teach"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "teach" ? (
+                      <TeachStep
+                        selectedConcept={selectedConcept}
+                        teachContext={teachContext}
+                        teachResult={teachResult}
+                        planResult={planResult}
+                        uploadResult={uploadResult}
+                        loading={loading}
+                        onConceptChange={setSelectedConcept}
+                        onContextChange={setTeachContext}
+                        onTeach={runTeach}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-quiz"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-quiz"
+                    hidden={activeLearnTab !== "quiz"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "quiz" ? (
+                      <QuizStep
+                        topic={topic}
+                        quizConcept={quizConcept}
+                        selectedConcept={selectedConcept}
+                        numQuestions={numQuestions}
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        planResult={planResult}
+                        loading={loading}
+                        onQuizConceptChange={setQuizConcept}
+                        onNumQuestionsChange={setNumQuestions}
+                        onAnswerChange={(qNum, opt) =>
+                          setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
+                        }
+                        onGenerateQuiz={runQuiz}
+                        onEvaluate={runEvaluate}
+                        onSetQuizConcept={setQuizConcept}
+                      />
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={followNextAction}
-                disabled={loading}
-              >
-                {nextAction.label} &rarr;
-              </button>
-            </div>
-          )}
+              </section>
+            </>
+          ) : null}
+        </div>
+      </main>
 
-          {nextAction && nextAction.action === "session_complete" && (
-            <div className="next-action-banner next-action-complete">
-              <span className="next-action-icon">&#x1F3C6;</span>
-              <div className="next-action-reason">{nextAction.reason || "All concepts mastered! Great work."}</div>
-            </div>
-          )}
-        </>
-      )}
+      {sessionId && mobilePrimary ? (
+        <div className="mobile-sticky-actions" role="region" aria-label="Primary action">
+          <button
+            type="button"
+            className="mobile-sticky-actions__btn"
+            onClick={() => mobilePrimary.onClick()}
+            disabled={mobilePrimary.disabled}
+          >
+            {loading ? "Working…" : mobilePrimary.label}
+          </button>
+        </div>
+      ) : null}
 
-      <footer>
-        <small>EZ-Agentic Study Buddy &copy; 2026</small>
+      <footer className="site-footer">
+        <p className="site-footer__primary">
+          EZ Study Lab • Adaptive Learning Studio • © {new Date().getFullYear()}
+        </p>
+        <p className="site-footer__meta">
+          Open materials, local session, rule-based scoring.
+        </p>
       </footer>
     </div>
   );
 }
-
