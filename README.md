@@ -195,4 +195,6 @@ Tests that require `GROQ_API_KEY` skip automatically in CI.
 
 ## License
 
-MIT — See [LICENSE](./LICENSE) for details
+This project is released under the [MIT License](./LICENSE). You may use, modify, and redistribute the code under those terms. If you publish a fork or portfolio copy, linking back or crediting this repository is appreciated but not required. Ideas, bug reports, and pull requests are welcome when maintainers have time to review them.
+
+For notices on adapted third-party material (not the license for the whole repo), see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
