@@ -1,7 +1,8 @@
 {
-  "name": "ez-agentic-content-ui",
+  "name": "ez-agentic-study-buddy-webui",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
