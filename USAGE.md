@@ -7,7 +7,7 @@ The easiest way to use EZ Agentic Study Buddy is through the web interface.
 ### Start the Backend
 
 ```bash
-uv sync --extra web
+uv sync --extra web --locked
 uv run uvicorn webapi.main:app --reload --port 8000
 ```
 
@@ -36,32 +36,48 @@ npm run dev
 | Plain text | `.txt` | Split into sections by blank lines |
 | Markdown | `.md` | Split by headings (`#`, `##`, etc.) |
 | JSON | `.json` | Key-value pairs or nested objects |
-| PDF | `.pdf` | Requires `pymupdf` — install with `uv pip install pymupdf` |
+| PDF | `.pdf` | Loaded via **pymupdf** (included in `pyproject.toml`; run `uv sync`) |
 
 ### API Usage (curl)
 
+Replace `SESSION_ID` with the `session_id` value from `/session/from-upload` (or export it: `export SESSION_ID=...`).
+
 ```bash
-# Upload a file and create a session
-curl -X POST http://localhost:8000/session/from-upload \
+# Upload a file and create a session (multipart field must be "files")
+curl -s -X POST http://localhost:8000/session/from-upload \
   -F "files=@my-notes.md"
 
-# Plan learning path
-curl -X POST http://localhost:8000/session/{SESSION_ID}/plan
-
-# Teach a concept
-curl -X POST http://localhost:8000/session/{SESSION_ID}/teach
-
-# Generate a quiz
-curl -X POST http://localhost:8000/session/{SESSION_ID}/quiz
-
-# Evaluate answers
-curl -X POST http://localhost:8000/session/{SESSION_ID}/evaluate \
+# Plan learning path (JSON body — empty topic uses session topic)
+curl -s -X POST "http://localhost:8000/session/${SESSION_ID}/plan" \
   -H "Content-Type: application/json" \
-  -d '{"answers": {"q1": "B", "q2": "A"}}'
+  -d '{"topic":"","difficulty_level":"beginner","max_concepts":10}'
+
+# Teach a concept (concept_name is required)
+curl -s -X POST "http://localhost:8000/session/${SESSION_ID}/teach" \
+  -H "Content-Type: application/json" \
+  -d '{"concept_name":"Your concept name","difficulty_level":"beginner","context":""}'
+
+# Generate a quiz for a concept
+curl -s -X POST "http://localhost:8000/session/${SESSION_ID}/quiz" \
+  -H "Content-Type: application/json" \
+  -d '{"concept_name":"Your concept name","difficulty_level":"beginner","num_questions":3,"question_types":"multiple_choice"}' \
+  -o quiz-response.json
+
+# Evaluate answers: the API expects quiz_data and learner_answers as JSON *strings*.
+# Easiest: save the /quiz JSON to quiz-response.json, write learner answers, combine with jq.
+echo '{"answers":[{"question_number":1,"answer":"A"}]}' > learner-answers.json
+# Use the same question_number values as in quiz-response.json; for MC, answer can be A/B/C/D or full option text.
+jq -n --rawfile q quiz-response.json --rawfile la learner-answers.json \
+  '{quiz_data: $q, learner_answers: $la}' | \
+curl -s -X POST "http://localhost:8000/session/${SESSION_ID}/evaluate" \
+  -H "Content-Type: application/json" \
+  -d @-
 
 # Get next recommended action
-curl http://localhost:8000/session/{SESSION_ID}/next-action
+curl -s "http://localhost:8000/session/${SESSION_ID}/next-action"
 ```
+
+The **`jq`** step is optional if you build the outer JSON yourself; keep `quiz_data` and `learner_answers` as string values whose contents are valid JSON. See `POST /session/{session_id}/evaluate` in [http://localhost:8000/docs](http://localhost:8000/docs) when the server is running.
 
 ---
 
