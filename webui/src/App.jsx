@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fmtError, isSessionExpired } from "./api";
+import {
+  createUserFacingApiError,
+  errorDisplayFromCaughtMessage,
+  isSessionExpired,
+} from "./api";
 import LandingHero from "./components/LandingHero";
 import UploadStep from "./components/UploadStep";
 import MaterialPreview from "./components/MaterialPreview";
@@ -28,7 +32,7 @@ export default function App() {
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
@@ -46,11 +50,16 @@ export default function App() {
 
   const [nextAction, setNextAction] = useState(null);
 
-  const resetErrors = () => setError("");
+  const resetErrors = () => setError(null);
 
-  const handleApiError = (data) => {
-    if (isSessionExpired(data)) resetSession();
-    throw new Error(fmtError(data));
+  const failResponse = (data) => {
+    if (isSessionExpired(data)) {
+      resetSession();
+      const err = new Error("session expired");
+      err.sessionExpired = true;
+      throw err;
+    }
+    throw createUserFacingApiError(data);
   };
 
   const resetSession = () => {
@@ -111,13 +120,14 @@ export default function App() {
         body: formData,
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) failResponse(data);
       setSessionId(data.session_id);
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
       if (data.suggested_topic) setSuggestedTopic(data.suggested_topic);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -125,7 +135,7 @@ export default function App() {
 
   const runPlan = async () => {
     if (!sessionId) {
-      setError("Upload material first.");
+      setError({ title: "Upload material first" });
       return;
     }
     setLoading(true);
@@ -142,12 +152,13 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setPlanResult(data);
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -155,11 +166,11 @@ export default function App() {
 
   const runTeach = async () => {
     if (!sessionId) {
-      setError("Upload material first.");
+      setError({ title: "Upload material first" });
       return;
     }
     if (!selectedConcept.trim()) {
-      setError("Pick a concept to teach.");
+      setError({ title: "Pick a concept to teach" });
       return;
     }
     setLoading(true);
@@ -176,11 +187,12 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setTeachResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -188,12 +200,12 @@ export default function App() {
 
   const runQuiz = async () => {
     if (!sessionId) {
-      setError("Upload material first.");
+      setError({ title: "Upload material first" });
       return;
     }
     const conceptToQuiz = quizConcept.trim() || selectedConcept.trim();
     if (!conceptToQuiz) {
-      setError("Enter a concept to quiz on.");
+      setError({ title: "Enter a concept to quiz on" });
       return;
     }
     setLoading(true);
@@ -213,10 +225,11 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setQuizResult(data);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -224,7 +237,7 @@ export default function App() {
 
   const runEvaluate = async () => {
     if (!quizResult) {
-      setError("Generate a quiz first.");
+      setError({ title: "Generate a quiz first" });
       return;
     }
     setLoading(true);
@@ -244,11 +257,12 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -402,8 +416,11 @@ export default function App() {
                 onSubmit={uploadAndCreateSession}
               />
               {error ? (
-                <div className="error error--stage" role="alert">
-                  {error}
+                <div className="workspace-error workspace-error--stage" role="alert">
+                  <p className="workspace-error__title">{error.title}</p>
+                  {error.detail ? (
+                    <p className="workspace-error__detail">{error.detail}</p>
+                  ) : null}
                 </div>
               ) : null}
               <MaterialPreview uploadResult={uploadResult} />
@@ -414,8 +431,11 @@ export default function App() {
             <>
               <aside className="session-rail" aria-label="Session and material">
                 {error ? (
-                  <div className="error error--rail" role="alert">
-                    {error}
+                  <div className="workspace-error workspace-error--rail" role="alert">
+                    <p className="workspace-error__title">{error.title}</p>
+                    {error.detail ? (
+                      <p className="workspace-error__detail">{error.detail}</p>
+                    ) : null}
                   </div>
                 ) : null}
                 <SessionControls
