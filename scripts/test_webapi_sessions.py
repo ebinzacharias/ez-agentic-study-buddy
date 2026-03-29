@@ -78,6 +78,7 @@ def main() -> None:
     assert "text" in source
     assert "Python variables" in source["text"]
     assert source.get("filenames") == ["sample.txt"]
+    assert source.get("pdf_available") is False
     print("[PASS] session source text")
 
     print("All OK")
