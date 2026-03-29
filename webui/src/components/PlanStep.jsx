@@ -9,12 +9,13 @@ export default function PlanStep({
   onPlan,
 }) {
   return (
-    <div className="card card--stage">
+    <div className="card card--stage card--lab-stage">
       <div className="row">
         <div className="field">
           <label>Max concepts</label>
           <input
             type="number"
+            className="input-lab"
             min="1"
             max="25"
             value={maxConcepts}
@@ -23,14 +24,20 @@ export default function PlanStep({
         </div>
         <div className="field actions field--primary-action">
           <label>&nbsp;</label>
-          <button type="button" onClick={onPlan} disabled={disabled || loading}>
+          <button
+            type="button"
+            className="btn-plan-path"
+            onClick={onPlan}
+            disabled={disabled || loading}
+          >
             Plan Learning Path
           </button>
         </div>
       </div>
-      <div className="hint">
-        Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set on the API server.
-      </div>
+      <p className="plan-step-hint">
+        Uses an LLM &mdash; ensure <code>GROQ_API_KEY</code> is set on the API
+        server.
+      </p>
       {planResult && (
         <p className="plan-status" role="status">
           <strong>Path ready.</strong>{" "}
