@@ -469,7 +469,7 @@ button.btn-session-reset-top:focus-visible {
 
 .source-preview-dialog__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-5) var(--space-3);
@@ -493,14 +493,22 @@ button.btn-session-reset-top:focus-visible {
 
 .source-preview-dialog__close {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  margin: -8px -8px 0 0;
+  box-sizing: border-box;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 1.5rem;
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -509,6 +517,11 @@ button.btn-session-reset-top:focus-visible {
 .source-preview-dialog__close:hover {
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   color: var(--color-primary);
+}
+
+.source-preview-dialog__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 209, 197, 0.4);
 }
 
 .source-preview-dialog__body {
@@ -1541,7 +1554,7 @@ select {
 }
 
 /* Buttons — .btn-shadcn reserved for Tailwind / shadcn primitives */
-button:not(.btn-shadcn) {
+button:not(.btn-shadcn):not(.source-preview-dialog__close) {
   font-family: var(--font-body);
   font-size: var(--text-body);
   font-weight: 600;
@@ -1553,8 +1566,8 @@ button:not(.btn-shadcn) {
 }
 
 button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
-    .btn-session-ghost
-  ):not(.btn-session-copy):not(.btn-plan-path) {
+    .source-preview-dialog__close
+  ):not(.btn-session-ghost):not(.btn-session-copy):not(.btn-plan-path) {
   background: var(--color-primary);
   color: var(--color-on-primary);
   box-shadow: var(--shadow-button);
@@ -1562,20 +1575,22 @@ button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
 }
 
 button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
-    .btn-session-ghost
-  ):not(.btn-session-copy):not(.btn-plan-path):hover:not(:disabled) {
+    .source-preview-dialog__close
+  ):not(.btn-session-ghost):not(.btn-session-copy):not(.btn-plan-path):hover:not(
+    :disabled
+  ) {
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--color-primary) 88%, #4fd1c5);
   box-shadow: var(--shadow-lift);
 }
 
-button:not(.btn-shadcn):disabled {
+button:not(.btn-shadcn):not(.source-preview-dialog__close):disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none !important;
 }
 
-button:not(.btn-shadcn):focus-visible {
+button:not(.btn-shadcn):not(.source-preview-dialog__close):focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.45);
 }
