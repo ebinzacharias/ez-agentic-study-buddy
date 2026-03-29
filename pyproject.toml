@@ -1,5 +1,7 @@
 [tool.mypy]
-ignore_missing_imports = true
+ignore_missing_imports = false
+# FastAPI handlers return JSONResponse alongside dict; LangChain runnables use structural types
+# that mypy models narrowly. Suppress noisy return-value/operator until types are refined.
 disable_error_code = ["return-value", "operator"]
 
 [tool.pytest.ini_options]
@@ -25,4 +27,11 @@ web = [
     "fastapi>=0.115.6",
     "uvicorn>=0.34.0",
     "python-multipart>=0.0.22",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=8.0.0",
+    "ruff==0.11.7",
 ]

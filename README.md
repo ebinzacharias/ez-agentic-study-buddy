@@ -50,15 +50,17 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 
 ### Install & Verify
 
+The repo includes a committed **`uv.lock`** so installs are reproducible. Use `--locked` to ensure your environment matches that file (CI does this).
+
 ```bash
 # Clone & install (includes FastAPI backend)
 git clone https://github.com/ebinzacharias/ez-agentic-study-buddy.git
 cd ez-agentic-study-buddy
-uv sync --extra web
+uv sync --extra web --locked
 
 # Configure environment
 cp .env.example .env
-# Edit .env → add your GROQ_API_KEY
+# Edit .env → add your GROQ_API_KEY (never commit .env — see Security below)
 
 # Run offline tests to verify
 uv run python -m pytest scripts/test_decision_rules.py -q
@@ -166,6 +168,11 @@ LEARNINGS/        # Step-by-step implementation notes & agentic AI concepts
 | `POST` | `/session/{id}/quiz` | Generate a quiz |
 | `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
 | `GET`  | `/session/{id}/next-action` | Get recommended next step |
+
+## Security
+
+- **Never commit `.env`** or paste real **Groq**, **OpenAI**, or other API keys into the repo, issues, or screenshots. Only use `.env.example` (placeholders) in version control.
+- If a key was ever exposed in git history or a public fork, **rotate it immediately** in the provider console and treat it as compromised.
 
 ## Testing
 
