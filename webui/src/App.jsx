@@ -1,5 +1,10 @@
-﻿import React, { useMemo, useState } from "react";
-import { fmtError, isSessionExpired } from "./api";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  createUserFacingApiError,
+  errorDisplayFromCaughtMessage,
+  isSessionExpired,
+} from "./api";
+import LandingHero from "./components/LandingHero";
 import UploadStep from "./components/UploadStep";
 import MaterialPreview from "./components/MaterialPreview";
 import SessionControls from "./components/SessionControls";
@@ -7,6 +12,8 @@ import PlanStep from "./components/PlanStep";
 import TeachStep from "./components/TeachStep";
 import QuizStep from "./components/QuizStep";
 import NextActionBanner from "./components/NextActionBanner";
+import ModeSwitcher from "./components/ModeSwitcher";
+import QuizProgressTracker from "./components/QuizProgressTracker";
 
 export default function App() {
   const apiBaseUrl = useMemo(
@@ -14,7 +21,10 @@ export default function App() {
     []
   );
 
-  // ── Session state ──────────────────────────────────────────────
+  const showRuntimeBadge = import.meta.env.VITE_SHOW_RUNTIME_BADGE === "true";
+
+  const [activeLearnTab, setActiveLearnTab] = useState("plan");
+
   const [sessionId, setSessionId] = useState("");
   const [topic, setTopic] = useState("");
   const [suggestedTopic, setSuggestedTopic] = useState("");
@@ -22,7 +32,7 @@ export default function App() {
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
@@ -40,12 +50,16 @@ export default function App() {
 
   const [nextAction, setNextAction] = useState(null);
 
-  // ── Helpers ────────────────────────────────────────────────────
-  const resetErrors = () => setError("");
+  const resetErrors = () => setError(null);
 
-  const handleApiError = (data) => {
-    if (isSessionExpired(data)) resetSession();
-    throw new Error(fmtError(data));
+  const failResponse = (data) => {
+    if (isSessionExpired(data)) {
+      resetSession();
+      const err = new Error("session expired");
+      err.sessionExpired = true;
+      throw err;
+    }
+    throw createUserFacingApiError(data);
   };
 
   const resetSession = () => {
@@ -63,17 +77,26 @@ export default function App() {
     setQuizAnswers({});
     setEvalResult(null);
     setNextAction(null);
+    setActiveLearnTab("plan");
     resetErrors();
   };
 
   const clearDownstream = (...keep) => {
     if (!keep.includes("plan")) setPlanResult(null);
     if (!keep.includes("teach")) setTeachResult(null);
-    if (!keep.includes("quiz")) { setQuizResult(null); setQuizAnswers({}); }
+    if (!keep.includes("quiz")) {
+      setQuizResult(null);
+      setQuizAnswers({});
+    }
     if (!keep.includes("eval")) setEvalResult(null);
   };
 
-  // ── API actions ────────────────────────────────────────────────
+  useEffect(() => {
+    if (planResult) {
+      setActiveLearnTab((t) => (t === "plan" ? "teach" : t));
+    }
+  }, [planResult]);
+
   const handleFileChange = (e) => {
     setFile(e.target.files[0] || null);
     clearDownstream();
@@ -97,20 +120,28 @@ export default function App() {
         body: formData,
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(fmtError(data));
+      if (!resp.ok) failResponse(data);
       setSessionId(data.session_id);
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
       if (data.suggested_topic) setSuggestedTopic(data.suggested_topic);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const runPlan = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+  const runPlan = async (maxConceptsOverride) => {
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
+    const maxConceptsToUse =
+      typeof maxConceptsOverride === "number" && !Number.isNaN(maxConceptsOverride)
+        ? maxConceptsOverride
+        : maxConcepts;
     setLoading(true);
     resetErrors();
     clearDownstream();
@@ -118,23 +149,34 @@ export default function App() {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
+        body: JSON.stringify({
+          topic,
+          difficulty_level: difficulty,
+          max_concepts: maxConceptsToUse,
+        }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setPlanResult(data);
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const runTeach = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
-    if (!selectedConcept.trim()) { setError("Pick a concept to teach."); return; }
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
+    if (!selectedConcept.trim()) {
+      setError({ title: "Pick a concept to learn" });
+      return;
+    }
     setLoading(true);
     resetErrors();
     clearDownstream("plan");
@@ -149,20 +191,27 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setTeachResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const runQuiz = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+    if (!sessionId) {
+      setError({ title: "Upload material first" });
+      return;
+    }
     const conceptToQuiz = quizConcept.trim() || selectedConcept.trim();
-    if (!conceptToQuiz) { setError("Enter a concept to quiz on."); return; }
+    if (!conceptToQuiz) {
+      setError({ title: "Enter a concept to quiz on" });
+      return;
+    }
     setLoading(true);
     resetErrors();
     setQuizResult(null);
@@ -180,17 +229,21 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setQuizResult(data);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const runEvaluate = async () => {
-    if (!quizResult) { setError("Generate a quiz first."); return; }
+    if (!quizResult) {
+      setError({ title: "Generate a quiz first" });
+      return;
+    }
     setLoading(true);
     resetErrors();
     setEvalResult(null);
@@ -208,11 +261,12 @@ export default function App() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) handleApiError(data);
+      if (!resp.ok) failResponse(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
     } catch (err) {
-      setError(err.message);
+      if (err.sessionExpired) return;
+      setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -228,106 +282,329 @@ export default function App() {
       setQuizAnswers({});
       setEvalResult(null);
       setNextAction(null);
+      setActiveLearnTab("teach");
     } else if (action === "generate_quiz") {
       if (concept) setQuizConcept(concept);
       setQuizResult(null);
       setQuizAnswers({});
       setEvalResult(null);
       setNextAction(null);
+      setActiveLearnTab("quiz");
     } else if (action === "plan_learning_path") {
       setNextAction(null);
+      setActiveLearnTab("plan");
       runPlan();
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────
+  const selectConceptFromRail = (name) => {
+    setSelectedConcept(name);
+    setActiveLearnTab("teach");
+    setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
+    setQuizConcept("");
+  };
+
+  let mobilePrimary = null;
+  if (sessionId && !loading) {
+    if (activeLearnTab === "plan") {
+      mobilePrimary = { label: "Generate Study Path", onClick: runPlan, disabled: false };
+    } else if (activeLearnTab === "teach") {
+      mobilePrimary = {
+        label: "Learn concept",
+        onClick: runTeach,
+        disabled: !selectedConcept.trim(),
+      };
+    } else if (!quizResult) {
+      mobilePrimary = {
+        label: "Generate quiz",
+        onClick: runQuiz,
+        disabled: !(quizConcept.trim() || selectedConcept.trim()),
+      };
+    } else {
+      mobilePrimary = {
+        label: "Submit and evaluate",
+        onClick: runEvaluate,
+        disabled: false,
+      };
+    }
+  }
+
   return (
-    <div className="container">
-      <h1>EZ Study Buddy</h1>
-      <div className="muted">Upload your materials. Learn adaptively.</div>
+    <div className="app-shell">
+      <a href="#main-workspace" className="skip-link">
+        Skip to main content
+      </a>
 
-      {!sessionId && (
-        <UploadStep
-          file={file}
-          difficulty={difficulty}
-          topic={topic}
-          loading={loading}
-          onFileChange={handleFileChange}
-          onDifficultyChange={setDifficulty}
-          onTopicChange={setTopic}
-          onSubmit={uploadAndCreateSession}
-        />
-      )}
+      <div className="app-top-sticky">
+        <header className="site-header">
+          <div className="site-header__inner">
+            <div className="site-header__balance" aria-hidden="true" />
+            <div className="site-header__focus">
+              <div className="brand brand--showpiece">
+                <p className="brand__tagline">
+                  Upload. Plan. Learn. Grounded in your data.
+                </p>
+                <h1 className="brand__title">
+                  <span className="brand__title-ez" aria-label="Easy">
+                    EZ
+                  </span>
+                  <span className="brand__title-rest">Study Lab</span>
+                </h1>
+              </div>
+            </div>
+            <aside className="site-header__aside" aria-label="System status">
+              <span className="header-version-badge">v1.0 · Active</span>
+              {showRuntimeBadge ? (
+                <span className="env-badge" title="Runtime hint from build env">
+                  Local · Groq
+                </span>
+              ) : null}
+            </aside>
+          </div>
+        </header>
 
-      {error && <div className="error">{error}</div>}
-
-      <MaterialPreview uploadResult={uploadResult} />
-
-      {sessionId && (
-        <>
+        {sessionId ? (
           <SessionControls
             sessionId={sessionId}
+            apiBaseUrl={apiBaseUrl}
+            uploadResult={uploadResult}
             topic={topic}
             suggestedTopic={suggestedTopic}
             difficulty={difficulty}
             loading={loading}
-            onTopicChange={setTopic}
             onDifficultyChange={setDifficulty}
             onReset={resetSession}
           />
+        ) : null}
 
-          <PlanStep
-            maxConcepts={maxConcepts}
-            planResult={planResult}
-            loading={loading}
-            disabled={!sessionId}
-            onMaxConceptsChange={setMaxConcepts}
-            onPlan={runPlan}
+        {sessionId ? (
+          <ModeSwitcher
+            activeMode={activeLearnTab}
+            onChange={setActiveLearnTab}
           />
+        ) : null}
+      </div>
 
-          <TeachStep
-            selectedConcept={selectedConcept}
-            teachContext={teachContext}
-            teachResult={teachResult}
-            planResult={planResult}
-            loading={loading}
-            onConceptChange={setSelectedConcept}
-            onContextChange={setTeachContext}
-            onTeach={runTeach}
-          />
+      <main id="main-workspace" className="app-main">
+        <div
+          className={`app-grid ${sessionId ? `app-grid--with-session app-grid--mode-${activeLearnTab === "teach" ? "learn" : activeLearnTab}` : ""}`}
+        >
+          {!sessionId ? (
+            <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
+              <h2 id="onboarding-heading" className="sr-only">
+                Start by uploading material
+              </h2>
+              <LandingHero />
+              <UploadStep
+                file={file}
+                loading={loading}
+                onFileChange={handleFileChange}
+                onSubmit={uploadAndCreateSession}
+              />
+              {error ? (
+                <div className="workspace-error workspace-error--stage" role="alert">
+                  <p className="workspace-error__title">{error.title}</p>
+                  {error.detail ? (
+                    <p className="workspace-error__detail">{error.detail}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <MaterialPreview uploadResult={uploadResult} />
+            </section>
+          ) : null}
 
-          <QuizStep
-            topic={topic}
-            quizConcept={quizConcept}
-            selectedConcept={selectedConcept}
-            numQuestions={numQuestions}
-            quizResult={quizResult}
-            quizAnswers={quizAnswers}
-            evalResult={evalResult}
-            planResult={planResult}
-            loading={loading}
-            onQuizConceptChange={setQuizConcept}
-            onNumQuestionsChange={setNumQuestions}
-            onAnswerChange={(qNum, opt) =>
-              setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
-            }
-            onGenerateQuiz={runQuiz}
-            onEvaluate={runEvaluate}
-            onSetQuizConcept={setQuizConcept}
-          />
+          {sessionId ? (
+            <>
+              {activeLearnTab !== "teach" ? (
+                <aside
+                  className={`session-rail ${activeLearnTab === "quiz" ? "session-rail--quiz" : "session-rail--plan"}`}
+                  aria-label={
+                    activeLearnTab === "quiz"
+                      ? "Quiz progress"
+                      : "Learning path and materials"
+                  }
+                >
+                  {activeLearnTab === "quiz" ? (
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <QuizProgressTracker
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        numQuestions={numQuestions}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {error ? (
+                        <div className="workspace-error workspace-error--rail" role="alert">
+                          <p className="workspace-error__title">{error.title}</p>
+                          {error.detail ? (
+                            <p className="workspace-error__detail">{error.detail}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
 
-          <NextActionBanner
-            nextAction={nextAction}
-            loading={loading}
-            onFollow={followNextAction}
-          />
-        </>
-      )}
+                      {planResult?.concepts?.length ? (
+                        <div className="concept-rail card card--rail">
+                          <h2 className="concept-rail__title">Learning path</h2>
+                          <ol className="concept-rail__list">
+                            {planResult.concepts.map((c) => (
+                              <li key={`${c.order}-${c.concept_name}`}>
+                                <button
+                                  type="button"
+                                  className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                  onClick={() => selectConceptFromRail(c.concept_name)}
+                                >
+                                  <span className="concept-rail__order">{c.order}</span>
+                                  <span className="concept-rail__name">{c.concept_name}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ol>
+                          <p className="concept-rail__hint">
+                            Map concepts here, then open <strong>Learn</strong> for depth or{" "}
+                            <strong>Quiz</strong> to assess.
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </aside>
+              ) : null}
 
-      <footer>
-        <small>EZ Study Buddy &mdash; AI-powered adaptive learning &copy; 2026</small>
+              <section
+                className={`main-stage ${activeLearnTab === "quiz" ? "main-stage--quiz" : ""} ${activeLearnTab === "teach" ? "main-stage--learn" : ""}`}
+                aria-labelledby="stage-heading"
+              >
+                <h2 id="stage-heading" className="sr-only">
+                  Active study step
+                </h2>
+
+                {activeLearnTab === "teach" && error ? (
+                  <div className="workspace-error workspace-error--stage" role="alert">
+                    <p className="workspace-error__title">{error.title}</p>
+                    {error.detail ? (
+                      <p className="workspace-error__detail">{error.detail}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <NextActionBanner
+                  nextAction={nextAction}
+                  loading={loading}
+                  onFollow={followNextAction}
+                />
+
+                <div key={activeLearnTab} className="stage-panels mode-panel-transition">
+                  <div
+                    id="panel-plan"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-plan"
+                    hidden={activeLearnTab !== "plan"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "plan" ? (
+                      <PlanStep
+                        maxConcepts={maxConcepts}
+                        planResult={planResult}
+                        loading={loading}
+                        disabled={!sessionId}
+                        onMaxConceptsChange={setMaxConcepts}
+                        onPlan={runPlan}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-teach"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-teach"
+                    hidden={activeLearnTab !== "teach"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "teach" ? (
+                      <TeachStep
+                        selectedConcept={selectedConcept}
+                        teachContext={teachContext}
+                        teachResult={teachResult}
+                        planResult={planResult}
+                        uploadResult={uploadResult}
+                        loading={loading}
+                        onConceptChange={setSelectedConcept}
+                        onContextChange={setTeachContext}
+                        onTeach={runTeach}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-quiz"
+                    role="tabpanel"
+                    aria-labelledby="mode-tab-quiz"
+                    hidden={activeLearnTab !== "quiz"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "quiz" ? (
+                      <QuizStep
+                        topic={topic}
+                        quizConcept={quizConcept}
+                        selectedConcept={selectedConcept}
+                        numQuestions={numQuestions}
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        planResult={planResult}
+                        loading={loading}
+                        onQuizConceptChange={setQuizConcept}
+                        onNumQuestionsChange={setNumQuestions}
+                        onAnswerChange={(qNum, opt) =>
+                          setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
+                        }
+                        onGenerateQuiz={runQuiz}
+                        onEvaluate={runEvaluate}
+                        onSetQuizConcept={setQuizConcept}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            </>
+          ) : null}
+        </div>
+      </main>
+
+      {sessionId && mobilePrimary ? (
+        <div className="mobile-sticky-actions" role="region" aria-label="Primary action">
+          <button
+            type="button"
+            className="mobile-sticky-actions__btn"
+            onClick={() => mobilePrimary.onClick()}
+            disabled={mobilePrimary.disabled}
+          >
+            {loading ? "Working…" : mobilePrimary.label}
+          </button>
+        </div>
+      ) : null}
+
+      <footer className="site-footer">
+        <p className="site-footer__primary">
+          EZ Study Lab • Adaptive Learning Studio • © {new Date().getFullYear()}
+        </p>
+        <p className="site-footer__meta">
+          Open materials, local session, rule-based scoring.
+        </p>
       </footer>
     </div>
   );
 }
-

@@ -74,6 +74,12 @@ def main() -> None:
     assert sess.get("has_loaded_content") is True
     print("[PASS] session reflects loaded content")
 
+    source = http_json("GET", f"{API_BASE}/session/{sid}/source")
+    assert "text" in source
+    assert "Python variables" in source["text"]
+    assert source.get("filenames") == ["sample.txt"]
+    print("[PASS] session source text")
+
     print("All OK")
 
 

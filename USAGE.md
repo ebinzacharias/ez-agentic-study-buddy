@@ -36,7 +36,7 @@ npm run dev
 | Plain text | `.txt` | Split into sections by blank lines |
 | Markdown | `.md` | Split by headings (`#`, `##`, etc.) |
 | JSON | `.json` | Key-value pairs or nested objects |
-| PDF | `.pdf` | Requires `pymupdf` — install with `uv pip install pymupdf` |
+| PDF | `.pdf` | Loaded via **pymupdf** (included in `pyproject.toml`; run `uv sync`) |
 
 ### API Usage (curl)
 
