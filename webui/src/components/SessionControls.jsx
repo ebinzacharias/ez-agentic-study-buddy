@@ -62,7 +62,8 @@ export default function SessionControls({
             <div className="field">
               <label htmlFor="session-topic-display">Topic</label>
               <p id="session-topic-hint" className="session-field-hint">
-                Pulled from your file when this session started.
+                Auto: PDF/embedded title, filename, or first substantive heading — page numbers and
+                footers are skipped.
               </p>
               <div
                 id="session-topic-display"

@@ -539,7 +539,6 @@ export default function App() {
                         teachContext={teachContext}
                         teachResult={teachResult}
                         planResult={planResult}
-                        uploadResult={uploadResult}
                         loading={loading}
                         onConceptChange={setSelectedConcept}
                         onContextChange={setTeachContext}
