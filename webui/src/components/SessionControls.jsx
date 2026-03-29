@@ -26,69 +26,79 @@ export default function SessionControls({
   };
 
   return (
-    <>
-      <div className="session-metadata-card">
-        <div className="session-metadata-card__header">
-          <div className="session-id-label">
-            <span className="session-id-key">Session</span>
-            <code className="session-id-value" title={sessionId}>
-              {shortId}
-            </code>
+    <section className="session-workspace-hero" aria-label="Current session">
+      <div className="session-workspace-hero__inner">
+        <div className="session-hero-banner">
+          <div className="session-hero-banner__text">
+            <p className="session-hero-eyebrow">Session ready</p>
+            <h2 className="session-hero-heading">
+              Your material is loaded — set topic and difficulty, then choose a mode below.
+            </h2>
           </div>
           <button
             type="button"
-            className="btn-session-copy btn-small"
-            onClick={copyId}
-            disabled={!sessionId}
-            aria-label="Copy full session ID to clipboard"
+            className="btn-session-reset-top"
+            onClick={onReset}
+            disabled={loading}
           >
-            {copied ? "Copied" : "Copy ID"}
+            New upload &amp; reset session
           </button>
         </div>
 
-        <div className="row row--stack-sm session-metadata-card__fields">
-          <div className="field">
-            <label htmlFor="session-topic">Topic</label>
-            <input
-              id="session-topic"
-              className="input-lab"
-              value={topic}
-              onChange={(e) => onTopicChange(e.target.value)}
-              placeholder="e.g., Python Basics"
-              autoComplete="off"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="session-difficulty">Difficulty</label>
-            <select
-              id="session-difficulty"
-              className="input-lab"
-              value={difficulty}
-              onChange={(e) => onDifficultyChange(e.target.value)}
+        <div className="session-metadata-card session-metadata-card--hero">
+          <div className="session-metadata-card__header">
+            <div className="session-id-label">
+              <span className="session-id-key">Session</span>
+              <code className="session-id-value" title={sessionId}>
+                {shortId}
+              </code>
+            </div>
+            <button
+              type="button"
+              className="btn-session-copy btn-small"
+              onClick={copyId}
+              disabled={!sessionId}
+              aria-label="Copy full session ID to clipboard"
             >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
+              {copied ? "Copied" : "Copy ID"}
+            </button>
           </div>
+
+          <div className="row row--stack-sm session-metadata-card__fields">
+            <div className="field">
+              <label htmlFor="session-topic">Topic</label>
+              <input
+                id="session-topic"
+                className="input-lab"
+                value={topic}
+                onChange={(e) => onTopicChange(e.target.value)}
+                placeholder="e.g., Python Basics"
+                autoComplete="off"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="session-difficulty">Difficulty</label>
+              <select
+                id="session-difficulty"
+                className="input-lab"
+                value={difficulty}
+                onChange={(e) => onDifficultyChange(e.target.value)}
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          {suggestedTopic ? (
+            <p className="rail-meta session-metadata-card__suggested">
+              <span className="rail-meta-label">Suggested topic</span>
+              <span className="rail-meta-value">{suggestedTopic}</span>
+            </p>
+          ) : null}
         </div>
-
-        {suggestedTopic ? (
-          <p className="rail-meta session-metadata-card__suggested">
-            <span className="rail-meta-label">Suggested topic</span>
-            <span className="rail-meta-value">{suggestedTopic}</span>
-          </p>
-        ) : null}
       </div>
-
-      <button
-        type="button"
-        className="btn-session-ghost btn-block btn-touch"
-        onClick={onReset}
-        disabled={loading}
-      >
-        New upload &amp; reset session
-      </button>
-    </>
+    </section>
   );
 }
