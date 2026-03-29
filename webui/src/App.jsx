@@ -1,5 +1,6 @@
-﻿import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { fmtError, isSessionExpired } from "./api";
+import LandingHero from "./components/LandingHero";
 import UploadStep from "./components/UploadStep";
 import MaterialPreview from "./components/MaterialPreview";
 import SessionControls from "./components/SessionControls";
@@ -8,13 +9,18 @@ import TeachStep from "./components/TeachStep";
 import QuizStep from "./components/QuizStep";
 import NextActionBanner from "./components/NextActionBanner";
 
+const LEARN_TABS = ["plan", "teach", "quiz"];
+
 export default function App() {
   const apiBaseUrl = useMemo(
     () => import.meta.env.VITE_API_URL || "http://localhost:8000",
     []
   );
 
-  // ── Session state ──────────────────────────────────────────────
+  const showRuntimeBadge = import.meta.env.VITE_SHOW_RUNTIME_BADGE === "true";
+
+  const [activeLearnTab, setActiveLearnTab] = useState("plan");
+
   const [sessionId, setSessionId] = useState("");
   const [topic, setTopic] = useState("");
   const [suggestedTopic, setSuggestedTopic] = useState("");
@@ -40,7 +46,6 @@ export default function App() {
 
   const [nextAction, setNextAction] = useState(null);
 
-  // ── Helpers ────────────────────────────────────────────────────
   const resetErrors = () => setError("");
 
   const handleApiError = (data) => {
@@ -63,17 +68,26 @@ export default function App() {
     setQuizAnswers({});
     setEvalResult(null);
     setNextAction(null);
+    setActiveLearnTab("plan");
     resetErrors();
   };
 
   const clearDownstream = (...keep) => {
     if (!keep.includes("plan")) setPlanResult(null);
     if (!keep.includes("teach")) setTeachResult(null);
-    if (!keep.includes("quiz")) { setQuizResult(null); setQuizAnswers({}); }
+    if (!keep.includes("quiz")) {
+      setQuizResult(null);
+      setQuizAnswers({});
+    }
     if (!keep.includes("eval")) setEvalResult(null);
   };
 
-  // ── API actions ────────────────────────────────────────────────
+  useEffect(() => {
+    if (planResult) {
+      setActiveLearnTab((t) => (t === "plan" ? "teach" : t));
+    }
+  }, [planResult]);
+
   const handleFileChange = (e) => {
     setFile(e.target.files[0] || null);
     clearDownstream();
@@ -110,7 +124,10 @@ export default function App() {
   };
 
   const runPlan = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+    if (!sessionId) {
+      setError("Upload material first.");
+      return;
+    }
     setLoading(true);
     resetErrors();
     clearDownstream();
@@ -118,7 +135,11 @@ export default function App() {
       const resp = await fetch(`${apiBaseUrl}/session/${sessionId}/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, difficulty_level: difficulty, max_concepts: maxConcepts }),
+        body: JSON.stringify({
+          topic,
+          difficulty_level: difficulty,
+          max_concepts: maxConcepts,
+        }),
       });
       const data = await resp.json();
       if (!resp.ok) handleApiError(data);
@@ -133,8 +154,14 @@ export default function App() {
   };
 
   const runTeach = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
-    if (!selectedConcept.trim()) { setError("Pick a concept to teach."); return; }
+    if (!sessionId) {
+      setError("Upload material first.");
+      return;
+    }
+    if (!selectedConcept.trim()) {
+      setError("Pick a concept to teach.");
+      return;
+    }
     setLoading(true);
     resetErrors();
     clearDownstream("plan");
@@ -160,9 +187,15 @@ export default function App() {
   };
 
   const runQuiz = async () => {
-    if (!sessionId) { setError("Upload material first."); return; }
+    if (!sessionId) {
+      setError("Upload material first.");
+      return;
+    }
     const conceptToQuiz = quizConcept.trim() || selectedConcept.trim();
-    if (!conceptToQuiz) { setError("Enter a concept to quiz on."); return; }
+    if (!conceptToQuiz) {
+      setError("Enter a concept to quiz on.");
+      return;
+    }
     setLoading(true);
     resetErrors();
     setQuizResult(null);
@@ -190,7 +223,10 @@ export default function App() {
   };
 
   const runEvaluate = async () => {
-    if (!quizResult) { setError("Generate a quiz first."); return; }
+    if (!quizResult) {
+      setError("Generate a quiz first.");
+      return;
+    }
     setLoading(true);
     resetErrors();
     setEvalResult(null);
@@ -228,106 +264,302 @@ export default function App() {
       setQuizAnswers({});
       setEvalResult(null);
       setNextAction(null);
+      setActiveLearnTab("teach");
     } else if (action === "generate_quiz") {
       if (concept) setQuizConcept(concept);
       setQuizResult(null);
       setQuizAnswers({});
       setEvalResult(null);
       setNextAction(null);
+      setActiveLearnTab("quiz");
     } else if (action === "plan_learning_path") {
       setNextAction(null);
+      setActiveLearnTab("plan");
       runPlan();
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────
+  const selectConceptFromRail = (name) => {
+    setSelectedConcept(name);
+    setActiveLearnTab("teach");
+    setTeachResult(null);
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
+    setQuizConcept("");
+  };
+
+  const stepperState = (id) => {
+    const current = LEARN_TABS.indexOf(activeLearnTab);
+    const idx = LEARN_TABS.indexOf(id);
+    if (idx === current) return "current";
+    if (id === "plan" && planResult) return "complete";
+    if (id === "teach" && teachResult && activeLearnTab === "quiz") return "complete";
+    return "upcoming";
+  };
+
+  let mobilePrimary = null;
+  if (sessionId && !loading) {
+    if (activeLearnTab === "plan") {
+      mobilePrimary = { label: "Plan learning path", onClick: runPlan, disabled: false };
+    } else if (activeLearnTab === "teach") {
+      mobilePrimary = {
+        label: "Teach concept",
+        onClick: runTeach,
+        disabled: !selectedConcept.trim(),
+      };
+    } else if (!quizResult) {
+      mobilePrimary = {
+        label: "Generate quiz",
+        onClick: runQuiz,
+        disabled: !(quizConcept.trim() || selectedConcept.trim()),
+      };
+    } else {
+      mobilePrimary = {
+        label: "Submit and evaluate",
+        onClick: runEvaluate,
+        disabled: false,
+      };
+    }
+  }
+
   return (
-    <div className="container">
-      <h1>EZ Study Buddy</h1>
-      <div className="muted">Upload your materials. Learn adaptively.</div>
+    <div className="app-shell">
+      <a href="#main-workspace" className="skip-link">
+        Skip to main content
+      </a>
 
-      {!sessionId && (
-        <UploadStep
-          file={file}
-          difficulty={difficulty}
-          topic={topic}
-          loading={loading}
-          onFileChange={handleFileChange}
-          onDifficultyChange={setDifficulty}
-          onTopicChange={setTopic}
-          onSubmit={uploadAndCreateSession}
-        />
-      )}
+      <header className="site-header">
+        <div className="site-header__inner">
+          <div className="brand">
+            <p className="brand__eyebrow">Adaptive study</p>
+            <h1 className="brand__title">EZ Study Buddy</h1>
+            <p className="brand__tagline">
+              Upload your materials. Plan a path. Learn with grounded quizzes.
+            </p>
+          </div>
+          {showRuntimeBadge ? (
+            <span className="env-badge" title="Runtime hint from build env">
+              Local · Groq
+            </span>
+          ) : null}
+        </div>
+      </header>
 
-      {error && <div className="error">{error}</div>}
+      {sessionId ? (
+        <div className="stepper-container">
+          <nav className="stepper" aria-label="Learning workflow">
+            {LEARN_TABS.map((id) => {
+              const labels = {
+                plan: "Plan",
+                teach: "Teach",
+                quiz: "Quiz",
+              };
+              const state = stepperState(id);
+              const num = LEARN_TABS.indexOf(id) + 1;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`stepper__step stepper__step--${state}`}
+                  aria-current={state === "current" ? "step" : undefined}
+                  aria-label={`${labels[id]} step${state === "complete" ? ", completed" : ""}${state === "current" ? ", current" : ""}`}
+                  onClick={() => setActiveLearnTab(id)}
+                >
+                  <span className="stepper__index" aria-hidden="true">
+                    {state === "complete" ? "✓" : num}
+                  </span>
+                  <span className="stepper__label">{labels[id]}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      ) : null}
 
-      <MaterialPreview uploadResult={uploadResult} />
+      <main id="main-workspace" className="app-main">
+        <div className={`app-grid ${sessionId ? "app-grid--with-rail" : ""}`}>
+          {!sessionId ? (
+            <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
+              <h2 id="onboarding-heading" className="sr-only">
+                Start by uploading material
+              </h2>
+              <LandingHero />
+              <UploadStep
+                file={file}
+                loading={loading}
+                onFileChange={handleFileChange}
+                onSubmit={uploadAndCreateSession}
+              />
+              {error ? (
+                <div className="error error--stage" role="alert">
+                  {error}
+                </div>
+              ) : null}
+              <MaterialPreview uploadResult={uploadResult} />
+            </section>
+          ) : null}
 
-      {sessionId && (
-        <>
-          <SessionControls
-            sessionId={sessionId}
-            topic={topic}
-            suggestedTopic={suggestedTopic}
-            difficulty={difficulty}
-            loading={loading}
-            onTopicChange={setTopic}
-            onDifficultyChange={setDifficulty}
-            onReset={resetSession}
-          />
+          {sessionId ? (
+            <>
+              <aside className="session-rail" aria-label="Session and material">
+                {error ? (
+                  <div className="error error--rail" role="alert">
+                    {error}
+                  </div>
+                ) : null}
+                <SessionControls
+                  sessionId={sessionId}
+                  topic={topic}
+                  suggestedTopic={suggestedTopic}
+                  difficulty={difficulty}
+                  loading={loading}
+                  onTopicChange={setTopic}
+                  onDifficultyChange={setDifficulty}
+                  onReset={resetSession}
+                />
 
-          <PlanStep
-            maxConcepts={maxConcepts}
-            planResult={planResult}
-            loading={loading}
-            disabled={!sessionId}
-            onMaxConceptsChange={setMaxConcepts}
-            onPlan={runPlan}
-          />
+                {planResult?.concepts?.length ? (
+                  <div className="concept-rail card card--rail">
+                    <h2 className="concept-rail__title">Learning path</h2>
+                    <ol className="concept-rail__list">
+                      {planResult.concepts.map((c) => (
+                        <li key={`${c.order}-${c.concept_name}`}>
+                          <button
+                            type="button"
+                            className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                            onClick={() => selectConceptFromRail(c.concept_name)}
+                          >
+                            <span className="concept-rail__order">{c.order}</span>
+                            <span className="concept-rail__name">{c.concept_name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="concept-rail__hint">
+                      Select a concept to focus teach mode. Switch to Quiz when ready.
+                    </p>
+                  </div>
+                ) : null}
 
-          <TeachStep
-            selectedConcept={selectedConcept}
-            teachContext={teachContext}
-            teachResult={teachResult}
-            planResult={planResult}
-            loading={loading}
-            onConceptChange={setSelectedConcept}
-            onContextChange={setTeachContext}
-            onTeach={runTeach}
-          />
+                {uploadResult ? (
+                  <details className="rail-details">
+                    <summary className="rail-details__summary">Material preview</summary>
+                    <MaterialPreview
+                      uploadResult={uploadResult}
+                      className="result--compact"
+                    />
+                  </details>
+                ) : null}
+              </aside>
 
-          <QuizStep
-            topic={topic}
-            quizConcept={quizConcept}
-            selectedConcept={selectedConcept}
-            numQuestions={numQuestions}
-            quizResult={quizResult}
-            quizAnswers={quizAnswers}
-            evalResult={evalResult}
-            planResult={planResult}
-            loading={loading}
-            onQuizConceptChange={setQuizConcept}
-            onNumQuestionsChange={setNumQuestions}
-            onAnswerChange={(qNum, opt) =>
-              setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
-            }
-            onGenerateQuiz={runQuiz}
-            onEvaluate={runEvaluate}
-            onSetQuizConcept={setQuizConcept}
-          />
+              <section
+                className="main-stage"
+                aria-labelledby="stage-heading"
+              >
+                <h2 id="stage-heading" className="sr-only">
+                  Active study step
+                </h2>
 
-          <NextActionBanner
-            nextAction={nextAction}
-            loading={loading}
-            onFollow={followNextAction}
-          />
-        </>
-      )}
+                <NextActionBanner
+                  nextAction={nextAction}
+                  loading={loading}
+                  onFollow={followNextAction}
+                />
 
-      <footer>
-        <small>EZ Study Buddy &mdash; AI-powered adaptive learning &copy; 2026</small>
+                <div className="stage-panels">
+                  <div
+                    id="panel-plan"
+                    role="tabpanel"
+                    hidden={activeLearnTab !== "plan"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "plan" ? (
+                      <PlanStep
+                        maxConcepts={maxConcepts}
+                        planResult={planResult}
+                        loading={loading}
+                        disabled={!sessionId}
+                        onMaxConceptsChange={setMaxConcepts}
+                        onPlan={runPlan}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-teach"
+                    role="tabpanel"
+                    hidden={activeLearnTab !== "teach"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "teach" ? (
+                      <TeachStep
+                        selectedConcept={selectedConcept}
+                        teachContext={teachContext}
+                        teachResult={teachResult}
+                        planResult={planResult}
+                        loading={loading}
+                        onConceptChange={setSelectedConcept}
+                        onContextChange={setTeachContext}
+                        onTeach={runTeach}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div
+                    id="panel-quiz"
+                    role="tabpanel"
+                    hidden={activeLearnTab !== "quiz"}
+                    className="stage-panel"
+                  >
+                    {activeLearnTab === "quiz" ? (
+                      <QuizStep
+                        topic={topic}
+                        quizConcept={quizConcept}
+                        selectedConcept={selectedConcept}
+                        numQuestions={numQuestions}
+                        quizResult={quizResult}
+                        quizAnswers={quizAnswers}
+                        evalResult={evalResult}
+                        planResult={planResult}
+                        loading={loading}
+                        onQuizConceptChange={setQuizConcept}
+                        onNumQuestionsChange={setNumQuestions}
+                        onAnswerChange={(qNum, opt) =>
+                          setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
+                        }
+                        onGenerateQuiz={runQuiz}
+                        onEvaluate={runEvaluate}
+                        onSetQuizConcept={setQuizConcept}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            </>
+          ) : null}
+        </div>
+      </main>
+
+      {sessionId && mobilePrimary ? (
+        <div className="mobile-sticky-actions" role="region" aria-label="Primary action">
+          <button
+            type="button"
+            className="mobile-sticky-actions__btn"
+            onClick={() => mobilePrimary.onClick()}
+            disabled={mobilePrimary.disabled}
+          >
+            {loading ? "Working…" : mobilePrimary.label}
+          </button>
+        </div>
+      ) : null}
+
+      <footer className="site-footer">
+        <p>
+          EZ Study Buddy — adaptive learning studio. © {new Date().getFullYear()}
+        </p>
+        <p className="site-footer__meta">Open materials, local session, rule-based scoring.</p>
       </footer>
     </div>
   );
 }
-
