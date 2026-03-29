@@ -2,7 +2,7 @@
 
 Frontend for **EZ Agentic Study Buddy**: upload-first session, learning path planning, teaching, quizzes, evaluation, and next-action hints from the API.
 
-For environment setup (Python `uv`, `.env`, `GROQ_API_KEY`), use the [repository root README](../README.md).
+For environment setup (Python `uv`, `.env`, `GROQ_API_KEY`), use the [repository root README](../README.md). The **npm lockfile** for this app is **`webui/package-lock.json` only** (there is no root `package.json` / lockfile).
 
 ## Prerequisites
 

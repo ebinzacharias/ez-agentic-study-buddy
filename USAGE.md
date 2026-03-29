@@ -7,7 +7,7 @@ The easiest way to use EZ Agentic Study Buddy is through the web interface.
 ### Start the Backend
 
 ```bash
-uv sync --extra web
+uv sync --extra web --locked
 uv run uvicorn webapi.main:app --reload --port 8000
 ```
 
