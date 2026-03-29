@@ -30,9 +30,14 @@ export default function SourcePreviewModal({
   fileLabel,
 }) {
   const dialogRef = useRef(null);
-  const [text, setText] = useState("");
+  const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  const pdfSrc =
+    sessionId && apiBaseUrl
+      ? `${apiBaseUrl}/session/${encodeURIComponent(sessionId)}/source-file`
+      : "";
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -57,7 +62,7 @@ export default function SourcePreviewModal({
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    setText("");
+    setPayload(null);
 
     (async () => {
       try {
@@ -71,7 +76,12 @@ export default function SourcePreviewModal({
           setLoading(false);
           return;
         }
-        setText(typeof data.text === "string" ? data.text : "");
+        setPayload({
+          text: typeof data.text === "string" ? data.text : "",
+          pdfAvailable: Boolean(data.pdf_available),
+          pdfFilename: typeof data.pdf_filename === "string" ? data.pdf_filename : "",
+          filenames: Array.isArray(data.filenames) ? data.filenames : [],
+        });
         setLoading(false);
       } catch {
         if (cancelled) return;
@@ -84,6 +94,9 @@ export default function SourcePreviewModal({
       cancelled = true;
     };
   }, [open, sessionId, apiBaseUrl]);
+
+  const showPdf = Boolean(payload?.pdfAvailable && pdfSrc);
+  const text = payload?.text ?? "";
 
   return (
     <dialog
@@ -99,6 +112,12 @@ export default function SourcePreviewModal({
             </h2>
             {fileLabel ? (
               <p className="source-preview-dialog__subtitle">{fileLabel}</p>
+            ) : null}
+            {showPdf ? (
+              <p className="source-preview-dialog__subtitle source-preview-dialog__subtitle--note">
+                Showing the original PDF in your browser. Text extract is still what Plan / Learn /
+                Quiz use.
+              </p>
             ) : null}
           </div>
           <button
@@ -119,29 +138,37 @@ export default function SourcePreviewModal({
               {loadError}
             </p>
           ) : null}
-          {!loading && !loadError ? (
-            <div className="source-preview-dialog__scroll">
-              {text.trim() ? (
-                <article
-                  className="source-preview-dialog__prose teach-explanation"
-                  aria-label="Extracted document text"
-                >
-                  <ReactMarkdown
-                    components={{
-                      a: ({ node, ...props }) => (
-                        <a {...props} target="_blank" rel="noopener noreferrer" />
-                      ),
-                    }}
-                  >
-                    {prepareSourceMarkdown(text)}
-                  </ReactMarkdown>
-                </article>
-              ) : (
-                <p className="source-preview-dialog__empty">
-                  No text was extracted from this file.
-                </p>
-              )}
+          {!loading && !loadError && showPdf ? (
+            <div className="source-preview-dialog__scroll source-preview-dialog__scroll--pdf">
+              <iframe
+                title={payload?.pdfFilename || "PDF preview"}
+                className="source-preview-dialog__pdf"
+                src={pdfSrc}
+              />
             </div>
+          ) : null}
+          {!loading && !loadError && !showPdf && text.trim() ? (
+            <div className="source-preview-dialog__scroll">
+              <article
+                className="source-preview-dialog__prose teach-explanation"
+                aria-label="Extracted document text"
+              >
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
+                  }}
+                >
+                  {prepareSourceMarkdown(text)}
+                </ReactMarkdown>
+              </article>
+            </div>
+          ) : null}
+          {!loading && !loadError && !showPdf && !text.trim() ? (
+            <p className="source-preview-dialog__empty">
+              No text was extracted from this file.
+            </p>
           ) : null}
         </div>
       </div>
