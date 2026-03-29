@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
@@ -55,6 +55,8 @@ class PlanRequest(BaseModel):
 
 
 SESSIONS: dict[str, StudySessionState] = {}
+# Single-file PDF uploads only: original bytes for in-browser PDF preview (session bar → View source).
+SESSION_ORIGINAL_BLOBS: dict[str, tuple[bytes, str, str]] = {}
 
 
 _ACTION_LABELS: dict[str, str] = {
@@ -140,17 +142,72 @@ def _looks_like_temp_stem(s: str) -> bool:
     return bool(_TEMP_STEM_RE.match(s.strip()))
 
 
+def _letter_count(s: str) -> int:
+    return sum(1 for c in s if c.isalpha())
+
+
+def _is_low_signal_topic_line(s: str) -> bool:
+    """Heuristic: page counters, footers, and other PDF/header noise — not a real topic."""
+    t = (s or "").strip()
+    if not t:
+        return True
+    tl = t.lower()
+    # "1 von 2", "3 of 12", "12 / 30"
+    if re.match(r"^\d{1,4}\s+von\s+\d{1,4}$", tl):
+        return True
+    if re.match(r"^\d{1,4}\s+of\s+\d{1,4}$", tl):
+        return True
+    if re.match(r"^\d{1,4}\s*/\s*\d{1,4}$", t):
+        return True
+    # "Page 1", "Seite 2 von 10", "Page 3 of 12"
+    if re.match(r"^(?:page|seite)\s+\d{1,4}(?:\s*(?:of|von|,)\s*\d{1,4})?$", tl):
+        return True
+    if re.match(r"^(?:page|seite)\s+\d{1,4}\s*/\s*\d{1,4}$", tl):
+        return True
+    # Footer / legal one-liners
+    if "all rights reserved" in tl or tl.startswith("©") or "copyright" in tl:
+        return True
+    # Only digits, spaces, and light punctuation (e.g. " - 1 - ")
+    if _letter_count(t) == 0 and re.match(r"^[\d\s\-–—/|.,:]+$", t):
+        return True
+    return False
+
+
+def _looks_substantive_topic(s: str) -> bool:
+    """Enough letters to be a plausible human title (filters '1 von 2', '- 2 -', etc.)."""
+    t = (s or "").strip()
+    if len(t) < 4 or len(t) > 120:
+        return False
+    if _is_low_signal_topic_line(t):
+        return False
+    if _letter_count(t) < 4:
+        return False
+    return True
+
+
 def _first_heading_from_text(text: str) -> str:
-    """Try to extract the first meaningful heading or line from raw text."""
-    for line in text.splitlines():
-        line = line.strip()
+    """Prefer Markdown ATX headings, then the first substantive line (skip PDF page markers)."""
+    if not (text or "").strip():
+        return ""
+    lines = text.splitlines()
+    # Pass 1: explicit # headings (usually real document titles)
+    for raw in lines:
+        line = raw.strip()
         if not line:
             continue
-        # Strip leading markdown heading markers
+        m = re.match(r"^#{1,6}\s+(.+)$", line)
+        if m:
+            clean = m.group(1).strip()
+            if _looks_substantive_topic(clean):
+                return clean[:80]
+    # Pass 2: first substantive line (strip stray # if present)
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
         clean = re.sub(r"^#{1,6}\s*", "", line).strip()
-        # Skip very short or very long lines
-        if 3 < len(clean) < 120:
-            return clean
+        if _looks_substantive_topic(clean):
+            return clean[:80]
     return ""
 
 
@@ -159,8 +216,15 @@ def _suggest_topic(
     filenames: list[str],
     raw_texts: list[str] | None = None,
 ) -> str:
-    # 1. Use titles that are NOT temp-file stems
-    cleaned_titles = [t.strip() for t in titles if t and t.strip() and not _looks_like_temp_stem(t)]
+    # 1. Use loader titles that are not temp stems and not PDF/footer noise
+    cleaned_titles: list[str] = []
+    for t in titles:
+        t = (t or "").strip()
+        if not t or _looks_like_temp_stem(t):
+            continue
+        if not _looks_substantive_topic(t):
+            continue
+        cleaned_titles.append(t)
     if cleaned_titles:
         unique = _dedupe_preserve_order(cleaned_titles)
         if len(unique) == 1:
@@ -266,6 +330,7 @@ async def create_session_from_upload(
     raw_text_parts: list[str] = []
 
     try:
+        last_file_bytes: bytes = b""
         for file in files:
             filename = file.filename or "uploaded_file"
             filenames.append(filename)
@@ -279,10 +344,11 @@ async def create_session_from_upload(
                     },
                 )
 
+            last_file_bytes = await file.read()
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-                tmp.write(await file.read())
+                tmp.write(last_file_bytes)
                 tmp_path = tmp.name
-                temp_paths.append(tmp_path)
+            temp_paths.append(tmp_path)
 
             loaded = load_content(tmp_path)
             loaded_list.append(
@@ -317,6 +383,21 @@ async def create_session_from_upload(
         state.overall_difficulty = _normalize_difficulty(difficulty_level)
         state.set_loaded_content(merged_loaded_content)
         SESSIONS[session_id] = state
+
+        # Retain one original PDF for native preview (multi-file or non-PDF → text-only modal).
+        if len(filenames) == 1:
+            sole = filenames[0]
+            sole_ext = os.path.splitext(sole)[1].lower()
+            if sole_ext == ".pdf" and last_file_bytes:
+                SESSION_ORIGINAL_BLOBS[session_id] = (
+                    last_file_bytes,
+                    "application/pdf",
+                    os.path.basename(sole) or "document.pdf",
+                )
+            else:
+                SESSION_ORIGINAL_BLOBS.pop(session_id, None)
+        else:
+            SESSION_ORIGINAL_BLOBS.pop(session_id, None)
 
         section_titles = _dedupe_preserve_order([t for t in all_section_titles if t and t.strip()])
 
@@ -390,7 +471,38 @@ def get_session_source(session_id: str) -> dict[str, Any]:
     for item in sources:
         if isinstance(item, dict) and item.get("filename"):
             filenames.append(str(item["filename"]))
-    return {"text": raw, "filenames": filenames}
+    pdf_available = session_id in SESSION_ORIGINAL_BLOBS
+    out: dict[str, Any] = {
+        "text": raw,
+        "filenames": filenames,
+        "pdf_available": pdf_available,
+    }
+    if pdf_available:
+        out["pdf_filename"] = SESSION_ORIGINAL_BLOBS[session_id][2]
+    return out
+
+
+@app.get("/session/{session_id}/source-file")
+def get_session_source_file(session_id: str) -> Response:
+    """Return the original uploaded PDF bytes (only when a single PDF was used to create the session)."""
+    if session_id not in SESSIONS:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    blob = SESSION_ORIGINAL_BLOBS.get(session_id)
+    if not blob:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "No original PDF is stored for this session"},
+        )
+    data, media_type, filename = blob
+    safe_name = (os.path.basename(filename) or "document.pdf").replace('"', "").replace("\r", "")
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Cache-Control": "private, max-age=300",
+        },
+    )
 
 
 @app.post("/session/{session_id}/upload")
@@ -410,8 +522,9 @@ async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> di
             },
         )
 
+    file_bytes = await file.read()
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        tmp.write(await file.read())
+        tmp.write(file_bytes)
         tmp_path = tmp.name
 
     try:
@@ -419,6 +532,15 @@ async def upload_to_session(session_id: str, file: UploadFile = File(...)) -> di
         state.set_loaded_content(loaded.model_dump())
         if (loaded_title := loaded.title.strip()):
             state.topic = loaded_title
+
+        if ext == ".pdf" and file_bytes:
+            SESSION_ORIGINAL_BLOBS[session_id] = (
+                file_bytes,
+                "application/pdf",
+                os.path.basename(filename) or "document.pdf",
+            )
+        else:
+            SESSION_ORIGINAL_BLOBS.pop(session_id, None)
 
         return {
             "session_id": state.session_id,

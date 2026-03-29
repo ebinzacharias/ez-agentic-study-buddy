@@ -491,6 +491,12 @@ button.btn-session-reset-top:focus-visible {
   word-break: break-word;
 }
 
+.source-preview-dialog__subtitle--note {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
 .source-preview-dialog__close {
   flex-shrink: 0;
   box-sizing: border-box;
@@ -545,6 +551,48 @@ button.btn-session-reset-top:focus-visible {
   margin: 0 -4px;
   padding: 0 4px;
   border-radius: var(--radius-sm);
+}
+
+.source-preview-dialog__scroll--pdf {
+  max-height: min(72vh, 820px);
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-page);
+}
+
+.source-preview-dialog__pdf {
+  display: block;
+  width: 100%;
+  height: min(72vh, 820px);
+  border: none;
+  background: var(--color-bg-page);
+}
+
+.source-preview-dialog__pdf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.source-preview-dialog__pdf-link,
+.source-preview-dialog__external-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-teal);
+  text-decoration: none;
+}
+
+.source-preview-dialog__pdf-link:hover,
+.source-preview-dialog__external-link:hover {
+  text-decoration: underline;
+}
+
+.source-preview-dialog__pdf-fallback {
+  margin-bottom: var(--space-3);
 }
 
 /* Markdown prose (same tokens as Learn notes); strip nested “card” chrome inside modal */
@@ -894,51 +942,12 @@ button.btn-session-reset-top:focus-visible {
   margin-bottom: var(--space-5);
 }
 
-.learn-environment__split {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-@media (min-width: 1024px) {
-  .learn-environment__split {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-5);
-    align-items: start;
-  }
-}
-
-.learn-environment__notes,
-.learn-environment__source {
+.learn-environment__main {
   min-width: 0;
 }
 
 .learn-environment__notes-card .teach-explanation {
   max-height: min(65vh, 720px);
-}
-
-.learn-environment__material.result--material-source .preview {
-  max-height: min(65vh, 720px);
-}
-
-.learn-environment__placeholder {
-  margin: 0;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-}
-
-.learn-environment__placeholder p {
-  margin: 0;
-}
-
-.result--material-source {
-  border-left: 3px solid var(--color-accent);
-}
-
-.result--material-source .result__title {
-  font-size: var(--text-md);
 }
 
 /* Quiz progress rail */
