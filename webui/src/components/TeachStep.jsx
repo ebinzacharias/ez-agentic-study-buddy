@@ -12,12 +12,13 @@ export default function TeachStep({
 }) {
   return (
     <>
-      <div className="card">
+      <div className="card card--stage">
         <div className="row">
           <div className="field">
-            <label>Concept</label>
+            <label htmlFor="teach-concept">Concept</label>
             {planResult ? (
               <select
+                id="teach-concept"
                 value={selectedConcept}
                 onChange={(e) => onConceptChange(e.target.value)}
               >
@@ -30,26 +31,28 @@ export default function TeachStep({
               </select>
             ) : (
               <input
+                id="teach-concept"
                 value={selectedConcept}
                 onChange={(e) => onConceptChange(e.target.value)}
                 placeholder="e.g., LangGraph Nodes"
               />
             )}
           </div>
-          <div className="field actions">
+          <div className="field actions field--primary-action">
             <label>&nbsp;</label>
             <button
               type="button"
               onClick={onTeach}
               disabled={!selectedConcept.trim() || loading}
             >
-              Teach
+              Teach concept
             </button>
           </div>
         </div>
         <div className="field">
-          <label>Context (optional)</label>
+          <label htmlFor="teach-context">Context (optional)</label>
           <textarea
+            id="teach-context"
             value={teachContext}
             onChange={(e) => onContextChange(e.target.value)}
             placeholder="What do you already know? Where did you get stuck?"
@@ -58,8 +61,8 @@ export default function TeachStep({
       </div>
 
       {teachResult && (
-        <div className="result">
-          <h2>Teaching: {teachResult.concept_name}</h2>
+        <div className="result result--teach">
+          <h2 className="result__title">Teaching: {teachResult.concept_name}</h2>
           <pre className="preview">{teachResult.explanation}</pre>
         </div>
       )}

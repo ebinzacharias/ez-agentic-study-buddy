@@ -38,6 +38,10 @@ $env:VITE_API_URL = "http://127.0.0.1:8000"
 npm run dev
 ```
 
+### Optional header badge (“Local · Groq”)
+
+Shown only when `VITE_SHOW_RUNTIME_BADGE=true` is set at build/dev time (e.g. `VITE_SHOW_RUNTIME_BADGE=true npm run dev`).
+
 ## Features (UI flow)
 
 1. Upload material → session created, topic suggested from content  
