@@ -369,11 +369,12 @@ export default function App() {
         {sessionId ? (
           <SessionControls
             sessionId={sessionId}
+            apiBaseUrl={apiBaseUrl}
+            uploadResult={uploadResult}
             topic={topic}
             suggestedTopic={suggestedTopic}
             difficulty={difficulty}
             loading={loading}
-            onTopicChange={setTopic}
             onDifficultyChange={setDifficulty}
             onReset={resetSession}
           />
@@ -476,16 +477,6 @@ export default function App() {
                             <strong>Quiz</strong> to assess.
                           </p>
                         </div>
-                      ) : null}
-
-                      {uploadResult ? (
-                        <details className="rail-details">
-                          <summary className="rail-details__summary">Material preview</summary>
-                          <MaterialPreview
-                            uploadResult={uploadResult}
-                            className="result--compact"
-                          />
-                        </details>
                       ) : null}
                     </>
                   )}
