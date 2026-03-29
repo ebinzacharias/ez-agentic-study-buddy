@@ -34,7 +34,7 @@ export default function LandingHero() {
                 2
               </span>
               <div>
-                <strong>Plan → Teach → Quiz</strong>
+                <strong>Plan → Learn → Quiz</strong>
                 <p>
                   Extract a concept path, get explanations grounded in the text, then
                   check understanding with quizzes tied to the same content.
