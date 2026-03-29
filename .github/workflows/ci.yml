@@ -12,40 +12,49 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      
+
       - name: Install dependencies
-        run: uv sync --extra web
-      
+        run: uv sync --extra web --group dev --locked
+
       - name: Check imports
         run: |
           uv run python -c "from agent.core.state import StudySessionState; from agent.utils.llm_client import get_llm_client; from agent.tools.planner_tool import plan_learning_path; print('All imports successful')"
-      
+
       - name: Validate Python syntax
         run: |
-          uv run python -m py_compile agent/**/*.py scripts/**/*.py || true
-      - name: Lint with ruff
-        run: |
-          uv pip install ruff
-          uv run ruff check .
-      - name: Type check with mypy
-        run: |
-          uv pip install mypy
-          uv run mypy .
-      - name: Run tests
-        run: |
-          uv pip install pytest
-          uv run pytest
+          uv run python - <<'PY'
+          import pathlib
+          import py_compile
+          import sys
 
+          roots = (pathlib.Path("agent"), pathlib.Path("scripts"))
+          files = sorted({p for r in roots for p in r.rglob("*.py") if p.is_file()})
+          if not files:
+              print("No Python files found under agent/ or scripts/", file=sys.stderr)
+              sys.exit(1)
+          for path in files:
+              py_compile.compile(str(path), doraise=True)
+          print(f"py_compile ok ({len(files)} files)")
+          PY
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Type check with mypy
+        run: uv run mypy .
+
+      - name: Run tests
+        run: uv run pytest
