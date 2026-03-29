@@ -571,6 +571,30 @@ button.btn-session-reset-top:focus-visible {
   background: var(--color-bg-page);
 }
 
+.source-preview-dialog__pdf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.source-preview-dialog__pdf-link,
+.source-preview-dialog__external-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-teal);
+  text-decoration: none;
+}
+
+.source-preview-dialog__pdf-link:hover,
+.source-preview-dialog__external-link:hover {
+  text-decoration: underline;
+}
+
+.source-preview-dialog__pdf-fallback {
+  margin-bottom: var(--space-3);
+}
+
 /* Markdown prose (same tokens as Learn notes); strip nested “card” chrome inside modal */
 .source-preview-dialog__prose.teach-explanation {
   max-height: none;
