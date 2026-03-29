@@ -24,7 +24,7 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 | **Difficulty Adaptation** | Adapter tool adjusts difficulty up/down based on quiz performance. |
 | **Session State Tracking** | Pydantic-based state tracks progress, scores, retries, and next actions. |
 | **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
-| **Content Loading** | Parses `.txt`, `.md`, `.json`, and optionally `.pdf` (with PyMuPDF). |
+| **Content Loading** | Parses `.txt`, `.md`, `.json`, and `.pdf` (PyMuPDF is a normal dependency). |
 | **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
 | **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
 
