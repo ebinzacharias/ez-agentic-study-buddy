@@ -71,7 +71,7 @@ uv run python -m pytest scripts/test_decision_rules.py -q
 **Backend (FastAPI):**
 
 ```bash
-uv run uvicorn webapi.main:app --reload --port 8000
+python -m uvicorn webapi.main:app --reload --port 8000
 ```
 
 **Frontend (React):**
