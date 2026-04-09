@@ -411,7 +411,8 @@ async def create_session_from_upload(
             "preview": _truncate(merged_raw_text, 1200),
         }
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        logger.error(f"Error in /session/from-upload: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": str(e), "type": type(e).__name__})
     finally:
         for p in temp_paths:
             try:
