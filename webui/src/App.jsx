@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   createUserFacingApiError,
   errorDisplayFromCaughtMessage,
@@ -90,12 +90,6 @@ export default function App() {
     }
     if (!keep.includes("eval")) setEvalResult(null);
   };
-
-  useEffect(() => {
-    if (planResult) {
-      setActiveLearnTab((t) => (t === "plan" ? "teach" : t));
-    }
-  }, [planResult]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0] || null);
@@ -307,10 +301,29 @@ export default function App() {
     setQuizConcept("");
   };
 
+  const clearQuizProgress = () => {
+    setQuizResult(null);
+    setQuizAnswers({});
+    setEvalResult(null);
+    resetErrors();
+  };
+
   let mobilePrimary = null;
   if (sessionId && !loading) {
     if (activeLearnTab === "plan") {
-      mobilePrimary = { label: "Generate Study Path", onClick: runPlan, disabled: false };
+      if (planResult?.concepts?.length) {
+        mobilePrimary = {
+          label: loading ? "Generating…" : "Go to Learn",
+          onClick: () => setActiveLearnTab("teach"),
+          disabled: loading,
+        };
+      } else {
+        mobilePrimary = {
+          label: loading ? "Generating…" : "Generate learning path",
+          onClick: () => runPlan(),
+          disabled: loading,
+        };
+      }
     } else if (activeLearnTab === "teach") {
       mobilePrimary = {
         label: "Learn concept",
@@ -345,7 +358,7 @@ export default function App() {
             <div className="site-header__focus">
               <div className="brand brand--showpiece">
                 <p className="brand__tagline">
-                  Upload. Plan. Learn. Grounded in your data.
+                  Upload. Path. Learn. Grounded in your data.
                 </p>
                 <h1 className="brand__title">
                   <span className="brand__title-ez" aria-label="Easy">
@@ -473,8 +486,8 @@ export default function App() {
                             ))}
                           </ol>
                           <p className="concept-rail__hint">
-                            Map concepts here, then open <strong>Learn</strong> for depth or{" "}
-                            <strong>Quiz</strong> to assess.
+                            Same order as <strong>Path</strong>. Jump here from any mode, or use{" "}
+                            <strong>Learn</strong> / <strong>Quiz</strong> in the main panel.
                           </p>
                         </div>
                       ) : null}
@@ -522,6 +535,7 @@ export default function App() {
                         disabled={!sessionId}
                         onMaxConceptsChange={setMaxConcepts}
                         onPlan={runPlan}
+                        onPickConcept={selectConceptFromRail}
                       />
                     ) : null}
                   </div>
@@ -573,6 +587,7 @@ export default function App() {
                         onGenerateQuiz={runQuiz}
                         onEvaluate={runEvaluate}
                         onSetQuizConcept={setQuizConcept}
+                        onStartNewQuiz={clearQuizProgress}
                       />
                     ) : null}
                   </div>

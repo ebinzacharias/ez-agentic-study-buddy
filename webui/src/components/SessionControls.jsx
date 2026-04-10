@@ -5,6 +5,10 @@ function norm(s) {
   return (s || "").trim().toLowerCase();
 }
 
+const TOPIC_HINT =
+  "Topic is chosen automatically from your file (metadata, filename, or first solid heading).";
+const DIFF_HINT = "Used for Path, Learn, and Quiz calls in this session.";
+
 export default function SessionControls({
   sessionId,
   apiBaseUrl,
@@ -31,13 +35,54 @@ export default function SessionControls({
   }, [uploadResult]);
 
   return (
-    <section className="session-workspace-hero" aria-label="Current session">
+    <section
+      className="session-workspace-hero session-workspace-hero--compact"
+      aria-label="Current session"
+    >
       <div className="session-workspace-hero__inner">
-        <div className="session-hero-banner">
-          <p className="session-hero-summary sr-only">
-            Session topic and difficulty. View extracted source text or start a new upload.
-          </p>
-          <div className="session-hero-banner__actions" role="group" aria-label="Session actions">
+        <div className="session-compact-toolbar">
+          <div className="session-compact-toolbar__meta" role="group" aria-label="Session topic and difficulty">
+            <div className="session-compact-field">
+              <span className="session-compact-field__label" title={TOPIC_HINT}>
+                Topic
+              </span>
+              <p
+                id="session-topic-display"
+                className="session-compact-topic"
+                title={topic.trim() || undefined}
+                aria-describedby="session-topic-hint"
+              >
+                {topic.trim() ? topic : "—"}
+              </p>
+              <span id="session-topic-hint" className="sr-only">
+                {TOPIC_HINT}
+              </span>
+            </div>
+            <div className="session-compact-field session-compact-field--difficulty">
+              <label
+                htmlFor="session-difficulty"
+                className="session-compact-field__label"
+                title={DIFF_HINT}
+              >
+                Difficulty
+              </label>
+              <select
+                id="session-difficulty"
+                className="session-compact-select input-lab"
+                value={difficulty}
+                onChange={(e) => onDifficultyChange(e.target.value)}
+                aria-describedby="session-difficulty-hint"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+              <span id="session-difficulty-hint" className="sr-only">
+                {DIFF_HINT}
+              </span>
+            </div>
+          </div>
+          <div className="session-compact-toolbar__actions" role="group" aria-label="Session actions">
             <button
               type="button"
               className="btn-session-source"
@@ -57,48 +102,12 @@ export default function SessionControls({
           </div>
         </div>
 
-        <div className="session-metadata-card session-metadata-card--hero">
-          <div className="row row--stack-sm session-metadata-card__fields">
-            <div className="field">
-              <label htmlFor="session-topic-display">Topic</label>
-              <p id="session-topic-hint" className="session-field-hint">
-                Auto: PDF/embedded title, filename, or first substantive heading — page numbers and
-                footers are skipped.
-              </p>
-              <div
-                id="session-topic-display"
-                className="session-topic-readonly"
-                aria-describedby="session-topic-hint"
-              >
-                {topic.trim() ? topic : "—"}
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="session-difficulty">Difficulty</label>
-              <p id="session-difficulty-hint" className="session-field-hint">
-                Applied to Plan, Learn, and Quiz calls from this session.
-              </p>
-              <select
-                id="session-difficulty"
-                className="input-lab session-field-control"
-                value={difficulty}
-                onChange={(e) => onDifficultyChange(e.target.value)}
-                aria-describedby="session-difficulty-hint"
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </div>
-          </div>
-
-          {suggestedDiffers ? (
-            <p className="rail-meta session-metadata-card__suggested">
-              <span className="rail-meta-label">Model suggestion</span>
-              <span className="rail-meta-value">{suggestedTopic}</span>
-            </p>
-          ) : null}
-        </div>
+        {suggestedDiffers ? (
+          <p className="rail-meta session-compact-suggested">
+            <span className="rail-meta-label">Model suggestion</span>
+            <span className="rail-meta-value">{suggestedTopic}</span>
+          </p>
+        ) : null}
       </div>
 
       <SourcePreviewModal

@@ -183,7 +183,7 @@ export default function SourcePreviewModal({
             ) : null}
             {showPdf ? (
               <p className="source-preview-dialog__subtitle source-preview-dialog__subtitle--note">
-                Original PDF below (same file you uploaded). Plan / Learn / Quiz still use the text
+                Original PDF below (same file you uploaded). Path / Learn / Quiz still use the text
                 extract.
               </p>
             ) : null}

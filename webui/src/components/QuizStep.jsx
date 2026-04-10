@@ -16,88 +16,140 @@ export default function QuizStep({
   onGenerateQuiz,
   onEvaluate,
   onSetQuizConcept,
+  onStartNewQuiz,
 }) {
+  const phase =
+    evalResult != null ? "results" : quizResult != null ? "active" : "setup";
+
   return (
     <div className="quiz-environment">
       <div className="quiz-environment__inner">
-        <header className="quiz-environment__intro">
-          <h3 className="quiz-environment__heading">Quiz</h3>
-          <p className="quiz-environment__lede text-muted text-sm">
-            Assessment mode — large cards, clear feedback after you submit.
-          </p>
-        </header>
+        {phase === "setup" ? (
+          <header className="quiz-environment__intro">
+            <h3 className="quiz-environment__heading">Quiz</h3>
+            <p className="quiz-environment__lede text-muted text-sm">
+              Choose scope and question count, then generate. After that, you&apos;ll answer here —
+              no duplicate controls.
+            </p>
+          </header>
+        ) : null}
 
-        <div className="card card--stage quiz-environment__setup">
-          <div className="row">
-            <div className="field">
-              <label htmlFor="quiz-concept">Quiz concept</label>
-              {planResult ? (
-                <select
-                  id="quiz-concept"
-                  value={quizConcept}
-                  onChange={(e) => onQuizConceptChange(e.target.value)}
-                >
-                  <option value="">— Same as in Learn —</option>
-                  <option value={topic}>{topic} (entire document)</option>
-                  {planResult.concepts.map((c) => (
-                    <option key={c.concept_name} value={c.concept_name}>
-                      {c.concept_name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
+        {phase === "active" ? (
+          <header className="quiz-environment__intro quiz-environment__intro--tight">
+            <h3 className="quiz-environment__heading">Answer the questions</h3>
+            <p className="quiz-environment__lede text-muted text-sm">
+              Submit when ready. Use <strong>Change quiz</strong> to pick different settings.
+            </p>
+          </header>
+        ) : null}
+
+        {phase === "results" ? (
+          <header className="quiz-environment__intro quiz-environment__intro--tight">
+            <h3 className="quiz-environment__heading">Results</h3>
+            <p className="quiz-environment__lede text-muted text-sm">
+              Review feedback below. Start a new quiz when you&apos;re ready.
+            </p>
+          </header>
+        ) : null}
+
+        {phase === "setup" ? (
+          <div className="card card--stage quiz-environment__setup">
+            <div className="row">
+              <div className="field">
+                <label htmlFor="quiz-concept">Quiz concept</label>
+                {planResult ? (
+                  <select
+                    id="quiz-concept"
+                    value={quizConcept}
+                    onChange={(e) => onQuizConceptChange(e.target.value)}
+                  >
+                    <option value="">— Same as in Learn —</option>
+                    <option value={topic}>{topic} (entire document)</option>
+                    {planResult.concepts.map((c) => (
+                      <option key={c.concept_name} value={c.concept_name}>
+                        {c.concept_name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="quiz-concept"
+                    value={quizConcept}
+                    onChange={(e) => onQuizConceptChange(e.target.value)}
+                    placeholder={selectedConcept || "e.g., LangGraph Nodes"}
+                  />
+                )}
+              </div>
+              <div className="field">
+                <label htmlFor="quiz-numq">Questions</label>
                 <input
-                  id="quiz-concept"
-                  value={quizConcept}
-                  onChange={(e) => onQuizConceptChange(e.target.value)}
-                  placeholder={selectedConcept || "e.g., LangGraph Nodes"}
+                  id="quiz-numq"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={numQuestions}
+                  onChange={(e) => onNumQuestionsChange(Number(e.target.value) || 3)}
                 />
-              )}
+              </div>
+              <div className="field actions field--primary-action">
+                <label className="label-placeholder">&nbsp;</label>
+                <button
+                  type="button"
+                  onClick={onGenerateQuiz}
+                  disabled={
+                    !(quizConcept.trim() || selectedConcept.trim()) || loading
+                  }
+                >
+                  Generate quiz
+                </button>
+              </div>
             </div>
-            <div className="field">
-              <label htmlFor="quiz-numq">Questions</label>
-              <input
-                id="quiz-numq"
-                type="number"
-                min="1"
-                max="10"
-                value={numQuestions}
-                onChange={(e) => onNumQuestionsChange(Number(e.target.value) || 3)}
-              />
-            </div>
-            <div className="field actions field--primary-action">
-              <label className="label-placeholder">&nbsp;</label>
+            <div className="row row--tight">
               <button
                 type="button"
-                onClick={onGenerateQuiz}
-                disabled={
-                  !(quizConcept.trim() || selectedConcept.trim()) || loading
-                }
+                className="btn-secondary"
+                onClick={() => onSetQuizConcept(topic)}
+                disabled={!topic || loading}
               >
-                Generate quiz
+                Quiz entire document
               </button>
             </div>
+            <div className="hint">
+              Questions are grounded in your uploaded material. Use{" "}
+              <strong>Quiz entire document</strong> to quiz across all content.
+            </div>
           </div>
-          <div className="row row--tight">
+        ) : null}
+
+        {phase === "active" && quizResult ? (
+          <div className="quiz-environment__context-bar card card--stage">
+            <div className="quiz-environment__context-meta">
+              <span className="quiz-environment__context-label">Quiz</span>
+              <strong className="quiz-environment__context-value">
+                {quizResult.concept_name}
+              </strong>
+              <span className="quiz-environment__context-sep" aria-hidden>
+                ·
+              </span>
+              <span className="text-muted text-sm">
+                {quizResult.questions?.length ?? 0} questions
+              </span>
+            </div>
             <button
               type="button"
-              className="btn-secondary"
-              onClick={() => onSetQuizConcept(topic)}
-              disabled={!topic || loading}
+              className="btn-secondary quiz-environment__context-action"
+              onClick={onStartNewQuiz}
+              disabled={loading}
             >
-              Quiz entire document
+              Change quiz
             </button>
           </div>
-          <div className="hint">
-            Questions are grounded in your uploaded material. Use{" "}
-            <strong>Quiz entire document</strong> to quiz across all content.
-          </div>
-        </div>
+        ) : null}
 
-        {quizResult ? (
+        {phase === "active" && quizResult ? (
           <div className="result result--quiz quiz-environment__assessment">
-            <h2 className="result__title quiz-environment__assessment-title">
-              Assessment · {quizResult.concept_name}
+            <h2 className="result__title quiz-environment__assessment-title sr-only">
+              Questions · {quizResult.concept_name}
             </h2>
             {quizResult.questions?.map((q) => (
               <div key={q.question_number} className="quiz-question-card">
@@ -142,11 +194,21 @@ export default function QuizStep({
           </div>
         ) : null}
 
-        {evalResult ? (
+        {phase === "results" && evalResult ? (
           <div className="result result--eval quiz-environment__eval">
-            <h2 className="result__title">
-              Results — {evalResult.overall_percentage}%
-            </h2>
+            <div className="quiz-environment__eval-head">
+              <h2 className="result__title">
+                Score — {evalResult.overall_percentage}%
+              </h2>
+              <button
+                type="button"
+                className="btn-secondary quiz-environment__new-quiz-btn"
+                onClick={onStartNewQuiz}
+                disabled={loading}
+              >
+                New quiz
+              </button>
+            </div>
             <div
               className="score-bar"
               role="progressbar"

@@ -22,14 +22,19 @@ export default function QuizProgressTracker({
       <h2 className="quiz-progress-tracker__title">Progress</h2>
       {!quizResult ? (
         <p className="quiz-progress-tracker__empty text-muted text-sm">
-          Generate a quiz in the main panel. This tracker will show{" "}
-          {numQuestions} question{numQuestions === 1 ? "" : "s"} and what is
-          left to answer.
+          After you generate a quiz, this panel tracks each question. Right now: configure
+          and press <strong>Generate quiz</strong>.
         </p>
       ) : (
         <>
           <p className="quiz-progress-tracker__summary">
-            <strong>{remaining === 0 ? "All answered" : `${remaining} left`}</strong>
+            <strong>
+              {evalResult
+                ? "Graded"
+                : remaining === 0
+                  ? "All answered"
+                  : `${remaining} left`}
+            </strong>
             <span className="text-muted text-sm">
               {" "}
               · {answeredCount} / {total} selected
