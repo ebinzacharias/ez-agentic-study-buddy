@@ -1,9 +1,13 @@
 import React from "react";
 
 const MODES = [
-  { id: "plan", label: "Plan" },
-  { id: "teach", label: "Learn" },
-  { id: "quiz", label: "Quiz" },
+  {
+    id: "plan",
+    label: "Path",
+    title: "View your learning path and generate ordered concepts",
+  },
+  { id: "teach", label: "Learn", title: "Explanations grounded in your upload" },
+  { id: "quiz", label: "Quiz", title: "Practice questions on a concept" },
 ];
 
 export default function ModeSwitcher({ activeMode, onChange }) {
@@ -14,7 +18,7 @@ export default function ModeSwitcher({ activeMode, onChange }) {
         role="tablist"
         aria-label="Workspace mode"
       >
-        {MODES.map(({ id, label }) => {
+        {MODES.map(({ id, label, title }) => {
           const selected = activeMode === id;
           return (
             <button
@@ -25,6 +29,7 @@ export default function ModeSwitcher({ activeMode, onChange }) {
               aria-selected={selected}
               aria-controls={`panel-${id}`}
               tabIndex={0}
+              title={title}
               className={`mode-switcher__segment ${selected ? "is-active" : ""}`}
               onClick={() => onChange(id)}
             >
