@@ -872,24 +872,210 @@ button.btn-session-reset-top:focus-visible {
   color: var(--color-text-secondary);
 }
 
-.lp-fold__chips {
+/* Step cards: Path → Learn → Quiz */
+.lp-steps {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.lp-fold__chip {
-  padding: 5px 13px;
-  border-radius: var(--radius-pill);
-  background: var(--color-bg-elevated);
+.lp-step {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--space-3);
+  border-radius: 10px;
+  background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+  border-top: 3px solid var(--step-color, var(--color-accent));
+  box-shadow: var(--shadow-card);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  animation: lp-step-in 0.45s ease-out backwards;
+  animation-delay: calc(var(--step-i, 0) * 0.1s + 0.2s);
+}
+
+.lp-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.09);
+}
+
+.lp-step__label {
+  font-family: "Plus Jakarta Sans", var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.lp-step__desc {
   font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+@keyframes lp-step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Loading screen ──────────────────────────────────────── */
+.lp-fold--hidden {
+  display: none;
+}
+
+.lp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 64px);
+  padding: var(--space-6);
+  animation: lp-step-in 0.35s ease-out;
+}
+
+.lp-loading__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 400px;
+  text-align: center;
+}
+
+/* Spinner ring */
+.lp-loading__ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-right-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  animation: lp-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* File badge */
+.lp-loading__file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  max-width: 320px;
+}
+
+.lp-loading__file-icon {
+  flex-shrink: 0;
+  color: var(--color-accent-strong);
+  display: flex;
+  align-items: center;
+}
+
+.lp-loading__file-name {
+  font-size: var(--text-sm);
   font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Title + sub */
+.lp-loading__title {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", var(--font-display);
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--color-primary);
+}
+
+.lp-loading__sub {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+/* Progress track */
+.lp-loading__track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: var(--space-2);
+}
+
+.lp-loading__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lp-loading__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+  transition: background 0.3s;
+}
+
+.lp-loading__step--active .lp-loading__dot {
+  background: var(--color-accent);
+  animation: lp-dot-pulse 1.4s ease-in-out infinite;
+}
+
+.lp-loading__step--delay .lp-loading__dot {
+  animation-delay: 0.5s;
+}
+
+@keyframes lp-dot-pulse {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.65; }
+}
+
+.lp-loading__step-lbl {
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.lp-loading__step--active .lp-loading__step-lbl {
+  color: var(--color-text-primary);
+}
+
+.lp-loading__line {
+  flex: 1;
+  width: 52px;
+  height: 1px;
+  background: var(--color-border);
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+/* Entrance animation for title + sub too */
+.lp-fold__title {
+  animation: lp-step-in 0.45s ease-out 0.05s backwards;
+}
+
+.lp-fold__sub {
+  animation: lp-step-in 0.45s ease-out 0.12s backwards;
+}
+
+@media (max-width: 540px) {
+  .lp-steps {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
 }
 
 .lp-fold__form {
@@ -944,127 +1130,6 @@ button.btn-session-reset-top:focus-visible {
   .lp-fold__form {
     order: 1;
   }
-}
-
-/* Features / Bento ─────────────────────────────────────── */
-.lp-features {
-  padding: clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem);
-  background: var(--color-bg-page);
-}
-
-.lp-features__inner {
-  max-width: 1040px;
-  margin: 0 auto;
-}
-
-.lp-features__eyebrow {
-  margin: 0 0 var(--space-2);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent-strong);
-  text-align: center;
-}
-
-.lp-features__heading {
-  margin: 0 0 var(--space-6);
-  font-family: "Plus Jakarta Sans", var(--font-display);
-  font-size: clamp(1.55rem, 3.5vw, 2.15rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  color: var(--color-primary);
-  text-align: center;
-  text-wrap: balance;
-}
-
-.lp-bento {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.lp-bento__card {
-  position: relative;
-  overflow: hidden;
-  padding: var(--space-5);
-  border-radius: 14px;
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  transition: border-color 0.2s, box-shadow 0.25s, transform 0.2s;
-}
-
-.lp-bento__card:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 10px 32px rgba(79,209,197,.12);
-  transform: translateY(-3px);
-}
-
-.lp-bento__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
-}
-
-.lp-bento__step {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-.lp-bento__tag {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-accent-dim);
-  color: var(--color-accent-strong);
-}
-
-.lp-bento__title {
-  margin: 0;
-  font-family: "Plus Jakarta Sans", var(--font-display);
-  font-size: var(--text-md);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--color-primary);
-}
-
-.lp-bento__body {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  color: var(--color-text-secondary);
-  flex: 1;
-  padding-bottom: var(--space-3);
-}
-
-.lp-bento__bar {
-  display: block;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 0 0 14px 14px;
-  opacity: 0.65;
-  transition: opacity 0.2s;
-}
-
-.lp-bento__card:hover .lp-bento__bar {
-  opacity: 1;
 }
 
 /* Upload section ────────────────────────────────────────── */

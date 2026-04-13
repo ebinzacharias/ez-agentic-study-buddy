@@ -36,10 +36,7 @@ export default function LandingHero() {
         <ul className="lp-bento" role="list">
           {BENTO.map((b) => (
             <li key={b.step} className="lp-bento__card">
-              <div className="lp-bento__top">
-                <span className="lp-bento__step">{b.step}</span>
-                <span className="lp-bento__tag">{b.tag}</span>
-              </div>
+              <span className="lp-bento__tag">{b.tag}</span>
               <h3 className="lp-bento__title">{b.title}</h3>
               <p className="lp-bento__body">{b.body}</p>
               <span

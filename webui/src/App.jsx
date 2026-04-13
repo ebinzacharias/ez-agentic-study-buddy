@@ -4,7 +4,62 @@ import {
   errorDisplayFromCaughtMessage,
   isSessionExpired,
 } from "./api";
-import LandingHero from "./components/LandingHero";
+
+function DocIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+      <polyline
+        points="14 2 14 8 20 8"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function LoadingScreen({ file }) {
+  return (
+    <div className="lp-loading" role="status" aria-label="Starting session">
+      <div className="lp-loading__inner">
+        <div className="lp-loading__ring" aria-hidden="true" />
+
+        {file ? (
+          <div className="lp-loading__file-badge">
+            <span className="lp-loading__file-icon"><DocIcon /></span>
+            <span className="lp-loading__file-name">{file.name}</span>
+          </div>
+        ) : null}
+
+        <h2 className="lp-loading__title">Building your session…</h2>
+        <p className="lp-loading__sub">
+          Reading your file and setting up the workspace.
+          <br />Usually takes a few seconds.
+        </p>
+
+        <div className="lp-loading__track" aria-hidden="true">
+          <span className="lp-loading__step lp-loading__step--active">
+            <span className="lp-loading__dot" />
+            <span className="lp-loading__step-lbl">Upload</span>
+          </span>
+          <span className="lp-loading__line" />
+          <span className="lp-loading__step lp-loading__step--active lp-loading__step--delay">
+            <span className="lp-loading__dot" />
+            <span className="lp-loading__step-lbl">Process</span>
+          </span>
+          <span className="lp-loading__line" />
+          <span className="lp-loading__step">
+            <span className="lp-loading__dot" />
+            <span className="lp-loading__step-lbl">Launch</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 import UploadStep from "./components/UploadStep";
 import MaterialPreview from "./components/MaterialPreview";
 import SessionControls from "./components/SessionControls";
@@ -407,28 +462,40 @@ export default function App() {
         >
           {!sessionId ? (
             <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
+              {loading ? (
+                <LoadingScreen file={file} />
+              ) : null}
+
               {/* ── Above-fold split: hero copy | upload card ── */}
-              <div className="lp-fold">
+              <div className={`lp-fold${loading ? " lp-fold--hidden" : ""}`}>
                 <div className="lp-fold__copy">
-                  <span className="lp-badge" aria-hidden="true">
-                    AI-Powered Adaptive Learning
-                  </span>
                   <h2 id="onboarding-heading" className="lp-fold__title">
-                    Study smarter.{" "}
+                    Turn any file into{" "}
                     <span className="lp-fold__title-accent">
-                      From your own material.
+                      a study session.
                     </span>
                   </h2>
                   <p className="lp-fold__sub">
-                    Upload a PDF, notes, or outline. EZ Study Lab builds a
-                    personalised learning path, grounded explanations, and
-                    quizzes — all anchored to the exact content you uploaded.
+                    Drop a document. Pick what to focus on. Every explanation
+                    and quiz question comes directly from your file — nothing
+                    gets invented or pulled from somewhere else.
                   </p>
-                  <ul className="lp-fold__chips" aria-label="Supported formats">
-                    {["PDF", "Markdown", "Plain text", "JSON"].map((f) => (
-                      <li key={f} className="lp-fold__chip">{f}</li>
+                  <ol className="lp-steps" aria-label="How it works">
+                    {[
+                      { label: "Path",  desc: "Ordered concept list built from your file",    color: "#4FD1C5" },
+                      { label: "Learn", desc: "Explanations grounded in your own text",        color: "#818CF8" },
+                      { label: "Quiz",  desc: "Questions drawn from the same source",          color: "#34D399" },
+                    ].map((s, i) => (
+                      <li
+                        key={s.label}
+                        className="lp-step"
+                        style={{ "--step-color": s.color, "--step-i": i }}
+                      >
+                        <span className="lp-step__label">{s.label}</span>
+                        <span className="lp-step__desc">{s.desc}</span>
+                      </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
 
                 <div className="lp-fold__form">
@@ -452,8 +519,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ── Features bento (below fold, on scroll) ── */}
-              <LandingHero />
               <MaterialPreview uploadResult={uploadResult} />
             </section>
           ) : null}
