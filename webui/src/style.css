@@ -2818,23 +2818,6 @@ input[type="file"]::file-selector-button {
   color: var(--color-text-secondary);
 }
 
-.drop-indicator {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: bounceDown 2s ease-in-out infinite;
-}
-
-.drop-indicator svg {
-  width: 100%;
-  height: 100%;
-  color: var(--color-accent);
-  stroke: currentColor;
-  stroke-width: 2.5;
-}
-
 /* File state */
 .upload-portal__file-state {
   display: flex;
@@ -2871,7 +2854,7 @@ input[type="file"]::file-selector-button {
 
 .file-name {
   margin: 0;
-  font-size: 18px;
+  font-size: clamp(1rem, 3vw, 1.1rem);
   font-weight: 600;
   color: var(--color-text-primary);
   word-break: break-word;
@@ -2880,7 +2863,7 @@ input[type="file"]::file-selector-button {
 
 .file-meta {
   margin: 0;
-  font-size: 12px;
+  font-size: clamp(0.75rem, 2vw, 0.85rem);
   color: var(--color-text-muted);
   letter-spacing: 0.05em;
 }
@@ -2889,7 +2872,7 @@ input[type="file"]::file-selector-button {
 .upload-submit-btn {
   position: relative;
   padding: 12px 32px;
-  font-size: 14px;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -3051,20 +3034,271 @@ input[type="file"]::file-selector-button {
 }
 
 /* Mobile optimizations */
-@media (max-width: 640px) {
-  .upload-drop-portal {
-    min-height: 300px;
-    aspect-ratio: auto;
+@media (max-width: 768px) {
+  /* Hide workflow guide on tablet and below */
+  .workflow-guide {
+    display: none !important;
   }
   
+  /* Adjust mission statement position on smaller screens */
   .mission-statement {
-    top: 60px;
+    top: 30px;
+    padding: 0 var(--space-4);
+  }
+  
+  .mission-title {
+    font-size: clamp(1.2rem, 5vw, 1.8rem);
+  }
+  
+  .mission-subtitle {
+    font-size: clamp(0.75rem, 3.5vw, 0.95rem);
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  /* Make upload portal more mobile-friendly */
+  .upload-portal {
+    padding: var(--space-3);
+    gap: var(--space-5);
+  }
+  
+  .upload-drop-portal {
+    max-width: 100%;
+    min-height: 280px;
+    aspect-ratio: auto;
+    border-radius: 16px;
+  }
+  
+  /* Adjust neural core size on mobile */
+  .upload-portal__neural-wrapper {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .portal-title {
+    font-size: clamp(1rem, 4vw, 1.2rem);
+  }
+  
+  .drop-indicator {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .drop-indicator svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .file-icon {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .file-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .file-name {
+    font-size: clamp(1rem, 3vw, 1.1rem);
+  }
+  
+  .file-meta {
+    font-size: clamp(0.75rem, 2vw, 0.85rem);
+  }
+  
+  .upload-submit-btn {
+    padding: 11px 24px;
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+    min-height: 42px;
+  }
+  
+  .submit-arrow {
+    width: 16px;
+    height: 16px;
+    margin-left: 6px;
   }
   
   .site-footer {
-    font-size: 10px;
-    bottom: 12px;
-    right: 12px;
+    font-size: 9px;
+    bottom: 10px;
+    right: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .mission-statement {
+    top: 20px;
+    padding: 0 var(--space-3);
+  }
+  
+  .mission-title {
+    font-size: clamp(1.1rem, 6vw, 1.6rem);
+    line-height: 1.25;
+  }
+  
+  .mission-subtitle {
+    font-size: clamp(0.7rem, 4vw, 0.9rem);
+    max-width: 100%;
+    margin-top: 8px;
+  }
+  
+  .upload-portal {
+    padding: var(--space-3) var(--space-2);
+    gap: var(--space-4);
+    max-width: 100%;
+  }
+  
+  .upload-drop-portal {
+    max-width: 100%;
+    min-height: 260px;
+    aspect-ratio: auto;
+    border-radius: 14px;
+    padding: var(--space-4);
+  }
+  
+  .upload-portal__neural-wrapper {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .portal-title {
+    font-size: clamp(0.95rem, 5vw, 1.15rem);
+    margin-bottom: 4px;
+  }
+  
+  .portal-subtitle {
+    font-size: clamp(0.65rem, 3vw, 0.8rem);
+  }
+  
+  .drop-indicator {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .drop-indicator svg {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .file-icon {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .file-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .file-name {
+    font-size: clamp(0.95rem, 3.5vw, 1.05rem);
+  }
+  
+  .file-meta {
+    font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+  }
+  
+  .upload-submit-btn {
+    padding: 10px 20px;
+    font-size: clamp(0.85rem, 3vw, 0.95rem);
+    min-height: 40px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .submit-arrow {
+    width: 15px;
+    height: 15px;
+    margin-left: 6px;
+  }
+  
+  .site-footer {
+    font-size: 8px;
+    bottom: 8px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mission-statement {
+    top: 16px;
+    padding: 0 12px;
+  }
+  
+  .mission-title {
+    font-size: clamp(1rem, 7vw, 1.4rem);
+  }
+  
+  .mission-subtitle {
+    font-size: clamp(0.65rem, 4.5vw, 0.85rem);
+    line-height: 1.5;
+  }
+  
+  .upload-portal {
+    padding: 12px 8px;
+    gap: 16px;
+  }
+  
+  .upload-drop-portal {
+    min-height: 240px;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  
+  .upload-portal__neural-wrapper {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .portal-title {
+    font-size: clamp(0.9rem, 5.5vw, 1.1rem);
+  }
+  
+  .drop-indicator {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .drop-indicator svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .file-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .file-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .file-name {
+    font-size: clamp(0.9rem, 4vw, 1rem);
+  }
+  
+  .file-meta {
+    font-size: clamp(0.65rem, 3vw, 0.75rem);
+  }
+  
+  .upload-submit-btn {
+    padding: 9px 18px;
+    font-size: clamp(0.8rem, 3.5vw, 0.9rem);
+    min-height: 38px;
+  }
+  
+  .submit-arrow {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .site-footer {
+    font-size: 7px;
+    bottom: 6px;
+    right: 6px;
   }
 }
 
