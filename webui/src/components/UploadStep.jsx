@@ -1,21 +1,23 @@
 import React, { useRef, useState } from "react";
-import { GetStartedButton } from "@/components/ui/get-started-button";
 
-function UploadDecorIcon({ filePresent }) {
+function NeuralCore({ isActive }) {
   return (
-    <span className="upload-zone__icon" aria-hidden="true">
-      {filePresent ? (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          <path d="M9 15h6M9 11h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-      ) : (
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 16V8m0 0l-3 3m3-3l3 3M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
+    <div className={`neural-core ${isActive ? "neural-core--active" : ""}`} aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="neural-core__svg">
+        <defs>
+          <filter id="neural-glow">
+            <feGaussianBlur stdDeviation="2"/>
+          </filter>
+        </defs>
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#4fd1c5" strokeWidth="1" opacity="0.3"/>
+        <circle cx="50" cy="50" r="35" fill="none" stroke="#4fd1c5" strokeWidth="0.8" opacity="0.2"/>
+        <circle cx="50" cy="20" r="2" fill="#4fd1c5" filter="url(#neural-glow)"/>
+        <circle cx="75" cy="50" r="2" fill="#4fd1c5" filter="url(#neural-glow)"/>
+        <circle cx="50" cy="80" r="2" fill="#4fd1c5" filter="url(#neural-glow)"/>
+        <circle cx="25" cy="50" r="2" fill="#4fd1c5" filter="url(#neural-glow)"/>
+        <circle cx="50" cy="50" r="3" fill="#4fd1c5" opacity="0.8"/>
+      </svg>
+    </div>
   );
 }
 
@@ -41,9 +43,13 @@ export default function UploadStep({
   };
 
   return (
-    <form onSubmit={onSubmit} className="upload-form-card">
+    <form onSubmit={onSubmit} className={`upload-portal ${dragOver ? "upload-portal--drag-active" : ""} ${file ? "upload-portal--has-file" : ""}`}>
+      <div className="upload-portal__neural-wrapper">
+        <NeuralCore isActive={!!file || dragOver} />
+      </div>
+
       <div
-        className={`upload-zone ${dragOver ? "upload-zone--active" : ""} ${file ? "upload-zone--has-file" : ""}`}
+        className="upload-drop-portal"
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -56,40 +62,55 @@ export default function UploadStep({
         }}
         role="button"
         tabIndex={0}
-        aria-label="Choose file or drop study material here"
+        aria-label="Drop your study material here or click to browse"
       >
         <input
           ref={fileInputRef}
           type="file"
           accept=".txt,.md,.markdown,.pdf,.json"
           onChange={onFileChange}
-          className="upload-zone__input"
-          aria-label="Study material file"
+          className="upload-drop-portal__input"
+          aria-label="Study material file input"
         />
-        <UploadDecorIcon filePresent={!!file} />
-        <div className="upload-zone__text">
+
+        <div className="upload-portal__content">
           {file ? (
-            <>
-              <strong>{file.name}</strong>
-              <span className="upload-zone__size">{(file.size / 1024).toFixed(1)} KB</span>
-            </>
+            <div className="upload-portal__file-state">
+              <div className="file-icon" aria-hidden="true">✓</div>
+              <h2 className="file-name">{file.name}</h2>
+              <p className="file-meta">{(file.size / 1024).toFixed(1)} KB • Ready</p>
+            </div>
           ) : (
-            <>
-              <strong>Drop your study material here</strong>
-              <span className="upload-zone__hint">Or click to browse — TXT, MD, PDF, JSON</span>
-            </>
+            <div className="upload-portal__empty-state">
+              <div className="drop-indicator" aria-hidden="true">⬇</div>
+              <h2 className="portal-title">Drop your material</h2>
+              <p className="portal-subtitle">PDF, Markdown, or Text</p>
+            </div>
           )}
         </div>
       </div>
 
       {file && (
-        <GetStartedButton
+        <button
           type="submit"
           disabled={loading}
-          className="btn-block btn-touch"
+          className="upload-submit-btn"
+          aria-label={loading ? "Processing your file" : "Start learning session"}
         >
-          {loading ? "Processing…" : "Upload and start session"}
-        </GetStartedButton>
+          <span className="submit-content">
+            {loading ? (
+              <>
+                <span className="loader-spinner" aria-hidden="true"></span>
+                <span>Initializing…</span>
+              </>
+            ) : (
+              <>
+                <span>Start learning</span>
+                <span className="submit-arrow" aria-hidden="true">→</span>
+              </>
+            )}
+          </span>
+        </button>
       )}
     </form>
   );
