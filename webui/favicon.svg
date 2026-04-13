@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Background -->
+  <rect width="256" height="256" fill="#1a2b4b"/>
+  
+  <!-- Book/Learning foundation -->
+  <path d="M64 48C55.16 48 48 55.16 48 64v128c0 8.84 7.16 16 16 16h128c8.84 0 16-7.16 16-16V64c0-8.84-7.16-16-16-16H64z" 
+        fill="#ffffff" opacity="0.15"/>
+  
+  <!-- Pages - left -->
+  <path d="M72 64v112h40V64z" fill="#4fd1c5"/>
+  
+  <!-- Pages - right -->
+  <path d="M128 80v96h40V80z" fill="#2c7a7b"/>
+  
+  <!-- AI neural network nodes - top right -->
+  <circle cx="180" cy="60" r="6" fill="#4fd1c5"/>
+  <circle cx="200" cy="70" r="6" fill="#4fd1c5"/>
+  <circle cx="190" cy="50" r="4" fill="#4fd1c5" opacity="0.6"/>
+  
+  <!-- Connecting lines for AI aspect -->
+  <line x1="180" y1="60" x2="200" y2="70" stroke="#4fd1c5" stroke-width="2" opacity="0.7"/>
+  <line x1="180" y1="60" x2="190" y2="50" stroke="#4fd1c5" stroke-width="1.5" opacity="0.5"/>
+  <line x1="200" y1="70" x2="190" y2="50" stroke="#4fd1c5" stroke-width="1.5" opacity="0.5"/>
+  
+  <!-- Check mark (completion/success) -->
+  <g transform="translate(150, 160)">
+    <circle cx="0" cy="0" r="18" fill="none" stroke="#4fd1c5" stroke-width="2.5"/>
+    <path d="M-8 -2L-2 6L10 -6" stroke="#4fd1c5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <!-- Bottom accent bar -->
+  <rect x="48" y="196" width="160" height="3" fill="#4fd1c5" rx="1.5"/>
+</svg>
