@@ -407,24 +407,53 @@ export default function App() {
         >
           {!sessionId ? (
             <section className="workspace workspace--onboarding" aria-labelledby="onboarding-heading">
-              <h2 id="onboarding-heading" className="sr-only">
-                Start by uploading material
-              </h2>
-              <LandingHero />
-              <UploadStep
-                file={file}
-                loading={loading}
-                onFileChange={handleFileChange}
-                onSubmit={uploadAndCreateSession}
-              />
-              {error ? (
-                <div className="workspace-error workspace-error--stage" role="alert">
-                  <p className="workspace-error__title">{error.title}</p>
-                  {error.detail ? (
-                    <p className="workspace-error__detail">{error.detail}</p>
+              {/* ── Above-fold split: hero copy | upload card ── */}
+              <div className="lp-fold">
+                <div className="lp-fold__copy">
+                  <span className="lp-badge" aria-hidden="true">
+                    AI-Powered Adaptive Learning
+                  </span>
+                  <h2 id="onboarding-heading" className="lp-fold__title">
+                    Study smarter.{" "}
+                    <span className="lp-fold__title-accent">
+                      From your own material.
+                    </span>
+                  </h2>
+                  <p className="lp-fold__sub">
+                    Upload a PDF, notes, or outline. EZ Study Lab builds a
+                    personalised learning path, grounded explanations, and
+                    quizzes — all anchored to the exact content you uploaded.
+                  </p>
+                  <ul className="lp-fold__chips" aria-label="Supported formats">
+                    {["PDF", "Markdown", "Plain text", "JSON"].map((f) => (
+                      <li key={f} className="lp-fold__chip">{f}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="lp-fold__form">
+                  <UploadStep
+                    file={file}
+                    loading={loading}
+                    onFileChange={handleFileChange}
+                    onSubmit={uploadAndCreateSession}
+                  />
+                  {error ? (
+                    <div
+                      className="workspace-error workspace-error--stage lp-fold__error"
+                      role="alert"
+                    >
+                      <p className="workspace-error__title">{error.title}</p>
+                      {error.detail ? (
+                        <p className="workspace-error__detail">{error.detail}</p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
-              ) : null}
+              </div>
+
+              {/* ── Features bento (below fold, on scroll) ── */}
+              <LandingHero />
               <MaterialPreview uploadResult={uploadResult} />
             </section>
           ) : null}
