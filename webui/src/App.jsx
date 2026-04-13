@@ -480,22 +480,67 @@ export default function App() {
                     and quiz question comes directly from your file — nothing
                     gets invented or pulled from somewhere else.
                   </p>
-                  <ol className="lp-steps" aria-label="How it works">
+                  <div className="lp-steps-wrap">
+                  <div className="lp-steps" role="list" aria-label="How it works">
                     {[
-                      { label: "Path",  desc: "Ordered concept list built from your file",    color: "#4FD1C5" },
-                      { label: "Learn", desc: "Explanations grounded in your own text",        color: "#818CF8" },
-                      { label: "Quiz",  desc: "Questions drawn from the same source",          color: "#34D399" },
-                    ].map((s, i) => (
-                      <li
-                        key={s.label}
-                        className="lp-step"
-                        style={{ "--step-color": s.color, "--step-i": i }}
-                      >
-                        <span className="lp-step__label">{s.label}</span>
-                        <span className="lp-step__desc">{s.desc}</span>
-                      </li>
+                      {
+                        label: "Path",
+                        desc: "Ordered topics extracted from your file",
+                        color: "#4FD1C5",
+                        bg: "rgba(79,209,197,.13)",
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Learn",
+                        desc: "Explanations grounded in your own text",
+                        color: "#818CF8",
+                        bg: "rgba(129,140,248,.13)",
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Quiz",
+                        desc: "Questions drawn from the same source",
+                        color: "#34D399",
+                        bg: "rgba(52,211,153,.13)",
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                          </svg>
+                        ),
+                      },
+                    ].map((s, i, arr) => (
+                      <React.Fragment key={s.label}>
+                        <div
+                          role="listitem"
+                          className="lp-step"
+                          style={{ "--step-color": s.color, "--step-bg": s.bg, "--step-i": i }}
+                        >
+                          <span className="lp-step__icon">{s.icon}</span>
+                          <span className="lp-step__label">{s.label}</span>
+                          <span className="lp-step__desc">{s.desc}</span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <span className="lp-step-arrow" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12h14M13 6l6 6-6 6"/>
+                            </svg>
+                          </span>
+                        )}
+                      </React.Fragment>
                     ))}
-                  </ol>
+                  </div>
+                  </div>
                 </div>
 
                 <div className="lp-fold__form">
