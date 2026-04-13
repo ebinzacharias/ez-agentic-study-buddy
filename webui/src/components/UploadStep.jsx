@@ -1,5 +1,30 @@
 import React, { useRef, useState } from "react";
 
+// Modern SVG Icons
+function CheckmarkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function DownArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 5V19M12 19L19 12M12 19L5 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function NeuralCore({ isActive }) {
   return (
     <div className={`neural-core ${isActive ? "neural-core--active" : ""}`} aria-hidden="true">
@@ -76,13 +101,13 @@ export default function UploadStep({
         <div className="upload-portal__content">
           {file ? (
             <div className="upload-portal__file-state">
-              <div className="file-icon" aria-hidden="true">✓</div>
+              <div className="file-icon" aria-hidden="true"><CheckmarkIcon /></div>
               <h2 className="file-name">{file.name}</h2>
               <p className="file-meta">{(file.size / 1024).toFixed(1)} KB • Ready</p>
             </div>
           ) : (
             <div className="upload-portal__empty-state">
-              <div className="drop-indicator" aria-hidden="true">⬇</div>
+              <div className="drop-indicator" aria-hidden="true"><DownArrowIcon /></div>
               <h2 className="portal-title">Drop your material</h2>
               <p className="portal-subtitle">PDF, Markdown, or Text</p>
             </div>
@@ -106,7 +131,7 @@ export default function UploadStep({
             ) : (
               <>
                 <span>Start learning</span>
-                <span className="submit-arrow" aria-hidden="true">→</span>
+                <span className="submit-arrow" aria-hidden="true"><ArrowRightIcon /></span>
               </>
             )}
           </span>
