@@ -15,7 +15,6 @@ export default function QuizStep({
   onAnswerChange,
   onGenerateQuiz,
   onEvaluate,
-  onSetQuizConcept,
   onStartNewQuiz,
 }) {
   const phase =
@@ -259,19 +258,12 @@ export default function QuizStep({
                 New quiz
               </button>
             </div>
-            <div
-              className="score-bar"
-              role="progressbar"
-              aria-valuenow={evalResult.overall_percentage}
-              aria-valuemin={0}
-              aria-valuemax={100}
+            <progress
+              className="score-bar score-bar--progress"
+              value={evalResult.overall_percentage}
+              max={100}
               aria-label="Score"
-            >
-              <div
-                className="score-fill"
-                style={{ width: `${evalResult.overall_percentage}%` }}
-              />
-            </div>
+            />
             <p className="text-muted text-sm">
               {evalResult.questions_evaluated} / {evalResult.total_questions} answered · Score:{" "}
               {evalResult.total_score} / {evalResult.total_questions}

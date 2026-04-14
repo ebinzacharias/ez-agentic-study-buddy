@@ -36,34 +36,32 @@ const MODES = [
 
 export default function ModeSwitcher({ activeMode, onChange }) {
   return (
-    <div className="mode-switcher-bar" aria-label="Workspace navigation">
-      <div className="mode-bar" role="tablist" aria-label="Workspace mode">
-        {MODES.map(({ id, label, icon }) => {
-          const isActive = activeMode === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`mode-tab-${id}`}
-              aria-selected={isActive}
-              aria-controls={`panel-${id}`}
-              className={`mode-tab${isActive ? " is-active" : ""}`}
-              onClick={() => onChange(id)}
-            >
-              {isActive && (
-                <motion.span
-                  className="mode-tab__track"
-                  layoutId="mode-pill"
-                  transition={{ type: "spring", stiffness: 400, damping: 34 }}
-                />
-              )}
-              <span className="mode-tab__icon">{icon}</span>
-              <span className="mode-tab__label">{label}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="mode-bar" role="tablist" aria-label="Workspace mode">
+      {MODES.map(({ id, label, icon }) => {
+        const isActive = activeMode === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`mode-tab-${id}`}
+            aria-selected={isActive}
+            aria-controls={`panel-${id}`}
+            className={`mode-tab${isActive ? " is-active" : ""}`}
+            onClick={() => onChange(id)}
+          >
+            {isActive && (
+              <motion.span
+                className="mode-tab__track"
+                layoutId="mode-pill"
+                transition={{ type: "spring", stiffness: 400, damping: 34 }}
+              />
+            )}
+            <span className="mode-tab__icon">{icon}</span>
+            <span className="mode-tab__label">{label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
