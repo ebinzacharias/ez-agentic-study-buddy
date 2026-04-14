@@ -99,7 +99,7 @@ export default function App() {
   const [teachResult, setTeachResult] = useState(null);
 
   const [quizConcept, setQuizConcept] = useState("");
-  const [numQuestions, setNumQuestions] = useState(3);
+  const [numQuestions, setNumQuestions] = useState(5);
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
