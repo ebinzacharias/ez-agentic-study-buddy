@@ -791,114 +791,101 @@ p {
   color: var(--color-text-muted);
 }
 
-/* ── Mode bar — full-width 3-column Framer Motion tabs ─── */
+/* ── Mode bar — compact floating segmented control ──────── */
 .mode-switcher-bar {
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-page);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(1.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px var(--space-4);
 }
 
 .mode-bar {
-  max-width: var(--layout-outer-max);
-  margin: 0 auto;
-  padding: 0 clamp(var(--space-4), 4vw, var(--space-7));
-  display: flex;
-  align-items: stretch;
-  gap: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(15, 23, 42, 0.055);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .mode-tab {
-  flex: 1;
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 6px 18px;
   border: none;
+  border-radius: 9px;
   background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
-  border-right: 1px solid var(--color-border);
+  transition: color 0.15s;
+  white-space: nowrap;
+  z-index: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mode-tab:last-child {
-  border-right: none;
-}
-
-.mode-tab:hover:not(.is-active) {
-  background: var(--color-bg-elevated);
-}
-
-.mode-tab:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px rgba(34, 211, 238, 0.45);
-}
-
-/* Framer Motion sliding indicator — sits behind content via z-index */
-.mode-tab__indicator {
+/* Framer Motion sliding tile */
+.mode-tab__track {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-page));
-  border-bottom: 2px solid var(--color-primary);
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* All tab children must sit above the sliding indicator */
-.mode-tab__icon,
-.mode-tab__content {
-  position: relative;
-  z-index: 1;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(15, 23, 42, 0.07);
+  z-index: -1;
 }
 
 .mode-tab__icon {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.mode-tab.is-active .mode-tab__icon {
-  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-bg-page));
-  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
-  color: var(--color-primary);
-}
-
-.mode-tab__content {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  color: currentColor;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
 }
 
 .mode-tab__label {
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.mode-tab:hover:not(.is-active) {
+  color: var(--color-text-primary);
+}
+
+.mode-tab:hover:not(.is-active) .mode-tab__icon {
+  opacity: 0.8;
+}
+
+.mode-tab.is-active {
+  color: var(--color-text-primary);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--color-text-secondary);
-  line-height: 1.2;
-  transition: color 0.15s;
+}
+
+.mode-tab.is-active .mode-tab__icon {
+  opacity: 1;
+  color: var(--color-accent);
 }
 
 .mode-tab.is-active .mode-tab__label {
-  color: var(--color-primary);
+  color: var(--color-text-primary);
 }
 
-.mode-tab__desc {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.mode-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent), 0 0 0 4px rgba(99, 102, 241, 0.18);
 }
 
 @keyframes workspaceFadeIn {
@@ -959,6 +946,12 @@ p {
     grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
     gap: 28px;
     align-items: start;
+  }
+
+  /* Ensure both columns share the same block-start edge */
+  .app-grid--with-session.app-grid--mode-learn > aside,
+  .app-grid--with-session.app-grid--mode-learn > section {
+    margin-top: 0;
   }
 
   .app-grid--with-session.app-grid--mode-quiz {
@@ -1731,17 +1724,22 @@ p {
 }
 
 @media (min-width: 1024px) {
-  /* No max-height / overflow here — one page scroll only; rail still sticks while main is tall */
+  /*
+   * app-main has overflow-x: hidden which creates a scroll container on both axes.
+   * sticky top is therefore relative to app-main's scrollport, not the viewport.
+   * The grid items start at 0px from the scrollport, so top: 0 sticks the rail
+   * right at the content edge without pushing it below the main-stage column.
+   */
   .session-rail {
     position: sticky;
-    top: calc(var(--header-h) + var(--mode-bar-h) + 8px);
+    top: 0;
     margin-bottom: 0;
     align-self: start;
     padding-right: var(--space-1);
   }
 
   .session-rail--quiz {
-    top: calc(var(--header-h) + var(--mode-bar-h) + 8px);
+    top: 0;
   }
 }
 
@@ -3692,19 +3690,10 @@ input[type="file"]::file-selector-button {
     text-align: center;
   }
 
-  /* Mode bar: hide description text on mobile to save space */
+  /* Mode bar: tighten padding on small screens */
   .mode-tab {
-    padding: 10px 12px;
-    gap: var(--space-2);
-  }
-
-  .mode-tab__desc {
-    display: none;
-  }
-
-  .mode-tab__icon {
-    width: 28px;
-    height: 28px;
+    padding: 6px 14px;
+    gap: 5px;
   }
 
   /* Session bar: stack on very small screens */
