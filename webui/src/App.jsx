@@ -164,16 +164,40 @@ export default function App() {
     formData.append("difficulty_level", difficulty);
     if (topic.trim()) formData.append("topic", topic.trim());
     try {
+      // Step 1 — upload & create session
       const resp = await fetch(`${apiBaseUrl}/session/from-upload`, {
         method: "POST",
         body: formData,
       });
       const data = await resp.json();
       if (!resp.ok) failResponse(data);
-      setSessionId(data.session_id);
+      const newSessionId = data.session_id;
+      const resolvedTopic = data.topic || topic;
+      setSessionId(newSessionId);
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
       if (data.suggested_topic) setSuggestedTopic(data.suggested_topic);
+
+      // Step 2 — auto-generate learning path (smart default: 10 concepts)
+      try {
+        const planResp = await fetch(`${apiBaseUrl}/session/${newSessionId}/plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: resolvedTopic,
+            difficulty_level: difficulty,
+            max_concepts: maxConcepts,
+          }),
+        });
+        const planData = await planResp.json();
+        if (planResp.ok) {
+          setPlanResult(planData);
+          const first = planData.concepts?.[0]?.concept_name;
+          if (first) setSelectedConcept(first);
+        }
+      } catch {
+        // Silent — user can retry via "Tune" panel in the Path tab
+      }
     } catch (err) {
       if (err.sessionExpired) return;
       setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
@@ -570,67 +594,53 @@ export default function App() {
 
           {sessionId ? (
             <>
-              {activeLearnTab !== "teach" ? (
+              {activeLearnTab !== "plan" ? (
                 <aside
                   className={`session-rail ${activeLearnTab === "quiz" ? "session-rail--quiz" : "session-rail--plan"}`}
                   aria-label={
-                    activeLearnTab === "quiz"
-                      ? "Quiz progress"
-                      : "Learning path and materials"
+                    activeLearnTab === "quiz" ? "Quiz progress" : "Concept navigator"
                   }
                 >
-                  {activeLearnTab === "quiz" ? (
-                    <>
-                      {error ? (
-                        <div className="workspace-error workspace-error--rail" role="alert">
-                          <p className="workspace-error__title">{error.title}</p>
-                          {error.detail ? (
-                            <p className="workspace-error__detail">{error.detail}</p>
-                          ) : null}
-                        </div>
+                  {error ? (
+                    <div className="workspace-error workspace-error--rail" role="alert">
+                      <p className="workspace-error__title">{error.title}</p>
+                      {error.detail ? (
+                        <p className="workspace-error__detail">{error.detail}</p>
                       ) : null}
-                      <QuizProgressTracker
-                        quizResult={quizResult}
-                        quizAnswers={quizAnswers}
-                        evalResult={evalResult}
-                        numQuestions={numQuestions}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      {error ? (
-                        <div className="workspace-error workspace-error--rail" role="alert">
-                          <p className="workspace-error__title">{error.title}</p>
-                          {error.detail ? (
-                            <p className="workspace-error__detail">{error.detail}</p>
-                          ) : null}
-                        </div>
-                      ) : null}
+                    </div>
+                  ) : null}
 
-                      {planResult?.concepts?.length ? (
-                        <div className="concept-rail card card--rail">
-                          <h2 className="concept-rail__title">Learning path</h2>
-                          <ol className="concept-rail__list">
-                            {planResult.concepts.map((c) => (
-                              <li key={`${c.order}-${c.concept_name}`}>
-                                <button
-                                  type="button"
-                                  className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
-                                  onClick={() => selectConceptFromRail(c.concept_name)}
-                                >
-                                  <span className="concept-rail__order">{c.order}</span>
-                                  <span className="concept-rail__name">{c.concept_name}</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ol>
-                          <p className="concept-rail__hint">
-                            Same order as <strong>Path</strong>. Jump here from any mode, or use{" "}
-                            <strong>Learn</strong> / <strong>Quiz</strong> in the main panel.
-                          </p>
-                        </div>
-                      ) : null}
-                    </>
+                  {activeLearnTab === "quiz" ? (
+                    <QuizProgressTracker
+                      quizResult={quizResult}
+                      quizAnswers={quizAnswers}
+                      evalResult={evalResult}
+                      numQuestions={numQuestions}
+                    />
+                  ) : (
+                    /* Learn tab — concept-rail as jump nav while studying */
+                    planResult?.concepts?.length ? (
+                      <div className="concept-rail card card--rail">
+                        <h2 className="concept-rail__title">Concepts</h2>
+                        <ol className="concept-rail__list">
+                          {planResult.concepts.map((c) => (
+                            <li key={`${c.order}-${c.concept_name}`}>
+                              <button
+                                type="button"
+                                className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                onClick={() => selectConceptFromRail(c.concept_name)}
+                              >
+                                <span className="concept-rail__order">{c.order}</span>
+                                <span className="concept-rail__name">{c.concept_name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+                        <p className="concept-rail__hint">
+                          Switch concept without leaving <strong>Learn</strong>.
+                        </p>
+                      </div>
+                    ) : null
                   )}
                 </aside>
               ) : null}
