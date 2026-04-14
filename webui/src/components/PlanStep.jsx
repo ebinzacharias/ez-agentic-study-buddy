@@ -4,9 +4,9 @@ function clampConcepts(n, max = 15) {
   return Math.min(max, Math.max(1, n));
 }
 
-function SkeletonCard({ delay }) {
+function SkeletonCard() {
   return (
-    <div className="concept-skeleton" style={{ "--delay": `${delay}ms` }}>
+    <div className="concept-skeleton">
       <div className="concept-skeleton__num" />
       <div className="concept-skeleton__body">
         <div className="concept-skeleton__line concept-skeleton__line--title" />
@@ -121,8 +121,8 @@ export default function PlanStep({
       {/* ── Skeleton ───────────────────────── */}
       {isAutoScanning && (
         <div className="concept-skeleton-grid" aria-label="Loading concepts" aria-busy="true">
-          {[0, 60, 120, 180, 240, 300, 360, 420].map((delay, i) => (
-            <SkeletonCard key={i} delay={delay} />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonCard key={i} />
           ))}
         </div>
       )}
@@ -130,11 +130,10 @@ export default function PlanStep({
       {/* ── Concept cards ──────────────────── */}
       {hasPath && (
         <ol className="concept-grid" aria-label="Learning path">
-          {planResult.concepts.map((c, i) => (
+          {planResult.concepts.map((c) => (
             <li
               key={`${c.order}-${c.concept_name}`}
               className={`concept-card${loading ? " concept-card--busy" : ""}`}
-              style={{ "--i": i }}
               role={onPickConcept ? "button" : undefined}
               tabIndex={onPickConcept ? 0 : undefined}
               aria-label={onPickConcept ? `Learn ${c.concept_name}` : undefined}

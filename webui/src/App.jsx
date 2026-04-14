@@ -857,7 +857,6 @@ export default function App() {
                         }
                         onGenerateQuiz={runQuiz}
                         onEvaluate={runEvaluate}
-                        onSetQuizConcept={setQuizConcept}
                         onStartNewQuiz={clearQuizProgress}
                       />
                     ) : null}

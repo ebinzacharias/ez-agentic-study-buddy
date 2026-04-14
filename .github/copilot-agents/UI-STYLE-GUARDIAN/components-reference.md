@@ -1,5 +1,4 @@
-# Define the complete content for components-reference.md
-content = """# UI Component Reference Guide — EZ Study Lab (v2.0.0)
+# UI Component Reference Guide — EZ Study Lab (v2.0.0)
 
 Use these patterns to ensure 100% compliance with the **EZ-PO Next-Gen Design System**. These examples serve as the visual "Gold Standard" for all generated code.
 
