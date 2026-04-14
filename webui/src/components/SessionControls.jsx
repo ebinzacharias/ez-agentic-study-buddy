@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import SourcePreviewModal from "./SourcePreviewModal";
 
 function norm(s) {
@@ -42,48 +42,16 @@ function ResetIcon() {
   );
 }
 
-function SettingsIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.4 3.4l.85.85M11.75 11.75l.85.85M3.4 12.6l.85-.85M11.75 4.25l.85-.85"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-const DIFF_HINT = "Controls the depth of explanations and questions in this session.";
-
 export default function SessionControls({
   sessionId,
   apiBaseUrl,
   uploadResult,
   topic,
   suggestedTopic,
-  difficulty,
   loading,
-  onDifficultyChange,
   onReset,
 }) {
   const [sourceOpen, setSourceOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsRef = useRef(null);
-
-  // Close settings when clicking anywhere outside the popover
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const handleOutside = (e) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
-        setSettingsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [settingsOpen]);
 
   const suggestedDiffers = suggestedTopic && norm(suggestedTopic) !== norm(topic);
 
@@ -121,41 +89,8 @@ export default function SessionControls({
           )}
         </div>
 
-        {/* Right: settings popover + actions */}
+        {/* Right: actions */}
         <div className="session-bar__actions">
-          {/* Settings — React-controlled, closes on click-outside */}
-          <div className="session-settings" ref={settingsRef}>
-            <button
-              type="button"
-              className={`session-settings__trigger${settingsOpen ? " is-open" : ""}`}
-              aria-expanded={settingsOpen}
-              aria-haspopup="true"
-              onClick={() => setSettingsOpen((v) => !v)}
-            >
-              <SettingsIcon />
-              <span>Settings</span>
-            </button>
-
-            {settingsOpen && (
-              <div className="session-settings__panel" role="dialog" aria-label="Session settings">
-                <label htmlFor="session-difficulty" className="session-settings__label">
-                  Difficulty
-                </label>
-                <p className="session-settings__hint">{DIFF_HINT}</p>
-                <select
-                  id="session-difficulty"
-                  className="session-settings__select"
-                  value={difficulty}
-                  onChange={(e) => onDifficultyChange(e.target.value)}
-                >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-              </div>
-            )}
-          </div>
-
           <button
             type="button"
             className="session-btn session-btn--ghost"

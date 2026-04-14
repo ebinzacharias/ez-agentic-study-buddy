@@ -203,17 +203,25 @@ class DecisionRules:
         }
     
     def _get_next_untaught_concept(self) -> Optional[str]:
+        """Return the next concept in the planned sequence that hasn't been started yet."""
+        done = {ConceptStatus.TAUGHT, ConceptStatus.QUIZZED, ConceptStatus.MASTERED}
+        current = self.state.current_concept
+
+        # Walk the planned order; skip the current concept and anything already done
         for concept_name in self.state.concepts_planned:
+            if concept_name == current:
+                continue
             concept_progress = self.state.get_concept_progress(concept_name)
-            if not concept_progress or concept_progress.status not in [
-                ConceptStatus.MASTERED,
-            ]:
+            if not concept_progress or concept_progress.status not in done:
                 return concept_name
-        
+
+        # Fall back to any untracked concept not yet done
         for concept_name, progress in self.state.concepts.items():
-            if progress.status not in [ConceptStatus.MASTERED]:
+            if concept_name == current:
+                continue
+            if progress.status not in done:
                 return concept_name
-        
+
         return None
     
     def _get_teaching_context(self) -> str:

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
-function clampConcepts(n) {
-  return Math.min(25, Math.max(1, n));
+function clampConcepts(n, max = 15) {
+  return Math.min(max, Math.max(1, n));
 }
 
 function TuneIcon() {
@@ -17,19 +17,6 @@ function TuneIcon() {
   );
 }
 
-function ArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3 8h10M9 4l4 4-4 4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function SkeletonCard({ delay }) {
   return (
@@ -45,17 +32,23 @@ function SkeletonCard({ delay }) {
 
 export default function PlanStep({
   maxConcepts,
+  maxAllowed,
+  difficulty,
   planResult,
   loading,
   disabled,
   onMaxConceptsChange,
+  onDifficultyChange,
   onPlan,
   onPickConcept,
 }) {
-  const [draft, setDraft] = useState(String(maxConcepts));
+  const ceiling = maxAllowed > 0 ? maxAllowed : 15;
+
+  // 0 means "auto" — show empty draft until backend resolves the count
+  const [draft, setDraft] = useState(maxConcepts > 0 ? String(maxConcepts) : "");
 
   useEffect(() => {
-    setDraft(String(maxConcepts));
+    setDraft(maxConcepts > 0 ? String(maxConcepts) : "");
   }, [maxConcepts]);
 
   const handleChange = (e) => {
@@ -64,25 +57,32 @@ export default function PlanStep({
     setDraft(v);
     if (v.trim() === "") return;
     const n = parseInt(v, 10);
-    if (!Number.isNaN(n)) onMaxConceptsChange(clampConcepts(n));
+    if (!Number.isNaN(n)) onMaxConceptsChange(clampConcepts(n, ceiling));
   };
 
   const handleBlur = () => {
-    const parsed = parseInt(String(draft).trim(), 10);
-    if (Number.isNaN(parsed)) {
-      const fallback = clampConcepts(maxConcepts);
+    const trimmed = String(draft).trim();
+    if (trimmed === "") {
+      // Blank resets to the document's suggested ceiling
+      const fallback = ceiling;
       onMaxConceptsChange(fallback);
       setDraft(String(fallback));
       return;
     }
-    const next = clampConcepts(parsed);
+    const parsed = parseInt(trimmed, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      onMaxConceptsChange(ceiling);
+      setDraft(String(ceiling));
+      return;
+    }
+    const next = clampConcepts(parsed, ceiling);
     onMaxConceptsChange(next);
     setDraft(String(next));
   };
 
   const runGenerate = () => {
     const parsed = parseInt(String(draft).trim(), 10);
-    const m = Number.isNaN(parsed) ? clampConcepts(maxConcepts) : clampConcepts(parsed);
+    const m = Number.isNaN(parsed) || parsed <= 0 ? ceiling : clampConcepts(parsed, ceiling);
     setDraft(String(m));
     onMaxConceptsChange(m);
     onPlan(m);
@@ -114,7 +114,7 @@ export default function PlanStep({
           </h3>
           {hasPath && (
             <p className="plan-env__meta">
-              {planResult.concepts.length} concepts &mdash; tap any card to start studying
+              {planResult.concepts.length}{maxAllowed > 0 ? ` / ${maxAllowed}` : ""} concepts &mdash; tap any card to start studying
             </p>
           )}
           {isAutoScanning && (
@@ -143,24 +143,45 @@ export default function PlanStep({
           {tuneOpen && (
             <div className="plan-tune__panel" role="dialog" aria-label="Tune learning path">
               <p className="plan-tune__hint">
-                Regenerating replaces the path and clears any downstream Learn / Quiz results.
+                {maxAllowed > 0
+                  ? `The document supports up to ${maxAllowed} concepts. Reduce the count to focus on fewer topics.`
+                  : "Regenerating replaces the path and clears any downstream Learn / Quiz results."}
               </p>
-              <div className="plan-tune__row">
-                <label htmlFor="plan-max-concepts-tune" className="plan-tune__label">
-                  Concepts
-                </label>
-                <input
-                  id="plan-max-concepts-tune"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="plan-tune__input"
-                  autoComplete="off"
-                  value={draft}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  aria-label="Max concepts, 1 to 25"
-                />
+              <div className="plan-tune__body">
+                <div className="plan-tune__row">
+                  <label htmlFor="plan-max-concepts-tune" className="plan-tune__label">
+                    Concepts
+                  </label>
+                  <input
+                    id="plan-max-concepts-tune"
+                    type="number"
+                    min={1}
+                    max={ceiling}
+                    className="plan-tune__input"
+                    autoComplete="off"
+                    placeholder={String(ceiling)}
+                    value={draft}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    aria-label={`Number of concepts, 1 to ${ceiling}`}
+                  />
+                  <span className="plan-tune__cap">/ {ceiling}</span>
+                </div>
+                <div className="plan-tune__row">
+                  <label htmlFor="plan-difficulty" className="plan-tune__label">
+                    Difficulty
+                  </label>
+                  <select
+                    id="plan-difficulty"
+                    className="plan-tune__select"
+                    value={difficulty}
+                    onChange={(e) => onDifficultyChange(e.target.value)}
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
                 <button
                   type="button"
                   className="plan-tune__run"
@@ -190,29 +211,31 @@ export default function PlanStep({
           {planResult.concepts.map((c, i) => (
             <li
               key={`${c.order}-${c.concept_name}`}
-              className="concept-card"
+              className={`concept-card${loading ? " concept-card--busy" : ""}`}
               style={{ "--i": i }}
+              role={onPickConcept ? "button" : undefined}
+              tabIndex={onPickConcept ? 0 : undefined}
+              aria-label={onPickConcept ? `Learn ${c.concept_name}` : undefined}
+              onClick={() => !loading && onPickConcept?.(c.concept_name)}
+              onKeyDown={(e) => {
+                if (!loading && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onPickConcept?.(c.concept_name);
+                }
+              }}
             >
               <span className="concept-card__num" aria-hidden="true">
                 {String(c.order).padStart(2, "0")}
               </span>
               <div className="concept-card__body">
                 <h4 className="concept-card__name">{c.concept_name}</h4>
-                {c.difficulty && (
-                  <span className="concept-card__diff">{c.difficulty}</span>
-                )}
               </div>
-              {onPickConcept && (
-                <button
-                  type="button"
-                  className="concept-card__cta"
-                  onClick={() => onPickConcept(c.concept_name)}
-                  aria-label={`Study ${c.concept_name}`}
-                >
-                  <span>Study</span>
-                  <ArrowIcon />
-                </button>
-              )}
+              <span className="concept-card__learn-hint" aria-hidden="true">
+                Learn
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
             </li>
           ))}
         </ol>
