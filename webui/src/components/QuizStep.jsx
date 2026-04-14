@@ -21,7 +21,7 @@ export default function QuizStep({
   const phase =
     evalResult != null ? "results" : quizResult != null ? "active" : "setup";
 
-  const MIN_Q = 1;
+  const MIN_Q = 5;
   const MAX_Q = 10;
   const stepQ = (delta) => {
     const next = Math.min(MAX_Q, Math.max(MIN_Q, numQuestions + delta));
