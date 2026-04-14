@@ -588,8 +588,8 @@ export default function App() {
                       {
                         label: "Path",
                         desc: "Ordered topics extracted from your file",
-                        color: "#4FD1C5",
-                        bg: "rgba(79,209,197,.13)",
+                        color: "#6366F1",
+                        bg: "rgba(99,102,241,.13)",
                         icon: (
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
