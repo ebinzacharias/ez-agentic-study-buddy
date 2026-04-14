@@ -6,7 +6,7 @@ const BENTO = [
     tag: "Path",
     title: "Build a concept roadmap",
     body: "AI extracts ordered topics from your document so you always know what to study next.",
-    bar: "#4FD1C5",
+    bar: "#6366F1",
   },
   {
     step: "02",

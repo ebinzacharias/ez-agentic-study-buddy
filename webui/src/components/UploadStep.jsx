@@ -123,7 +123,7 @@ export default function UploadStep({ file, loading, onFileChange, onSubmit }) {
                 <span className="lp-upload__check-icon">
                   <CheckIcon />
                 </span>
-                <div className="lp-upload__picked-info">
+                <div className="lp-upload__picked-info" title={file.name}>
                   <p className="lp-upload__file-name">{file.name}</p>
                   <p className="lp-upload__file-size">
                     {(file.size / 1024).toFixed(1)} KB · Ready
@@ -157,27 +157,31 @@ export default function UploadStep({ file, loading, onFileChange, onSubmit }) {
             {file ? "Change file" : "Browse files"}
           </button>
 
-          {/* Start CTA — only visible when file is picked */}
-          {file ? (
-            <button
-              type="submit"
-              disabled={loading}
-              className="lp-upload__start"
-              aria-label={loading ? "Starting session" : "Start learning session"}
-            >
-              {loading ? (
-                <>
-                  <span className="lp-upload__spinner" aria-hidden="true" />
-                  Starting session…
-                </>
-              ) : (
-                <>
-                  Start session
-                  <ArrowIcon />
-                </>
-              )}
-            </button>
-          ) : null}
+          {/*
+            Start CTA — always rendered so card height stays stable.
+            When no file: invisible placeholder (aria-hidden, tabIndex -1)
+            so it occupies space without entering the accessibility tree.
+          */}
+          <button
+            type="submit"
+            disabled={!file || loading}
+            tabIndex={file ? 0 : -1}
+            aria-hidden={!file}
+            aria-label={loading ? "Starting session" : "Start learning session"}
+            className={`lp-upload__start${!file ? " lp-upload__start--placeholder" : ""}`}
+          >
+            {loading ? (
+              <>
+                <span className="lp-upload__spinner" aria-hidden="true" />
+                Starting session…
+              </>
+            ) : (
+              <>
+                Start session
+                <ArrowIcon />
+              </>
+            )}
+          </button>
         </div>
       </form>
     </section>
