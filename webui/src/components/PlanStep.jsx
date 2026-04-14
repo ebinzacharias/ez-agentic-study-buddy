@@ -1,22 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function clampConcepts(n, max = 15) {
   return Math.min(max, Math.max(1, n));
 }
-
-function TuneIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M2 4h12M5 8h6M7 12h2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 
 function SkeletonCard({ delay }) {
   return (
@@ -43,160 +29,93 @@ export default function PlanStep({
   onPickConcept,
 }) {
   const ceiling = maxAllowed > 0 ? maxAllowed : 15;
-
-  // 0 means "auto" — show empty draft until backend resolves the count
-  const [draft, setDraft] = useState(maxConcepts > 0 ? String(maxConcepts) : "");
+  const [count, setCount] = useState(maxConcepts > 0 ? maxConcepts : ceiling);
 
   useEffect(() => {
-    setDraft(maxConcepts > 0 ? String(maxConcepts) : "");
-  }, [maxConcepts]);
+    if (maxConcepts > 0) setCount(maxConcepts);
+    else if (ceiling > 0) setCount(ceiling);
+  }, [maxConcepts, ceiling]);
 
-  const handleChange = (e) => {
-    const v = e.target.value;
-    if (!/^\d*$/.test(v)) return;
-    setDraft(v);
-    if (v.trim() === "") return;
-    const n = parseInt(v, 10);
-    if (!Number.isNaN(n)) onMaxConceptsChange(clampConcepts(n, ceiling));
-  };
-
-  const handleBlur = () => {
-    const trimmed = String(draft).trim();
-    if (trimmed === "") {
-      // Blank resets to the document's suggested ceiling
-      const fallback = ceiling;
-      onMaxConceptsChange(fallback);
-      setDraft(String(fallback));
-      return;
-    }
-    const parsed = parseInt(trimmed, 10);
-    if (Number.isNaN(parsed) || parsed <= 0) {
-      onMaxConceptsChange(ceiling);
-      setDraft(String(ceiling));
-      return;
-    }
-    const next = clampConcepts(parsed, ceiling);
+  const step = (delta) => {
+    const next = clampConcepts(count + delta, ceiling);
+    setCount(next);
     onMaxConceptsChange(next);
-    setDraft(String(next));
+    onPlan(next);
   };
-
-  const runGenerate = () => {
-    const parsed = parseInt(String(draft).trim(), 10);
-    const m = Number.isNaN(parsed) || parsed <= 0 ? ceiling : clampConcepts(parsed, ceiling);
-    setDraft(String(m));
-    onMaxConceptsChange(m);
-    onPlan(m);
-  };
-
-  const [tuneOpen, setTuneOpen] = useState(false);
-  const tuneRef = useRef(null);
-
-  useEffect(() => {
-    if (!tuneOpen) return;
-    const handleOutside = (e) => {
-      if (tuneRef.current && !tuneRef.current.contains(e.target)) {
-        setTuneOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [tuneOpen]);
 
   const hasPath = Boolean(planResult?.concepts?.length);
   const isAutoScanning = loading && !hasPath;
 
   return (
     <div className="plan-env">
+      {/* ── Header ─────────────────────────── */}
       <div className="plan-env__header">
         <div className="plan-env__header-left">
           <h3 className="plan-env__title">
-            {isAutoScanning ? "Scanning document…" : hasPath ? "Learning Path" : "Learning Path"}
+            {isAutoScanning ? "Scanning document…" : "Study Plan"}
           </h3>
-          {hasPath && (
-            <p className="plan-env__meta">
-              {planResult.concepts.length}{maxAllowed > 0 ? ` / ${maxAllowed}` : ""} concepts &mdash; tap any card to start studying
-            </p>
-          )}
-          {isAutoScanning && (
-            <p className="plan-env__meta plan-env__meta--scanning">
-              Extracting ordered concepts from your file
-            </p>
-          )}
-          {!isAutoScanning && !hasPath && (
-            <p className="plan-env__meta">
-              Concept extraction didn&apos;t run automatically. Use Tune to generate.
-            </p>
-          )}
-        </div>
-
-        <div className="plan-tune" ref={tuneRef}>
-          <button
-            type="button"
-            className={`plan-tune__trigger${tuneOpen ? " is-open" : ""}`}
-            aria-expanded={tuneOpen}
-            aria-haspopup="true"
-            onClick={() => setTuneOpen((v) => !v)}
-          >
-            <TuneIcon />
-            Tune
-          </button>
-          {tuneOpen && (
-            <div className="plan-tune__panel" role="dialog" aria-label="Tune learning path">
-              <p className="plan-tune__hint">
-                {maxAllowed > 0
-                  ? `The document supports up to ${maxAllowed} concepts. Reduce the count to focus on fewer topics.`
-                  : "Regenerating replaces the path and clears any downstream Learn / Quiz results."}
-              </p>
-              <div className="plan-tune__body">
-                <div className="plan-tune__row">
-                  <label htmlFor="plan-max-concepts-tune" className="plan-tune__label">
-                    Concepts
-                  </label>
-                  <input
-                    id="plan-max-concepts-tune"
-                    type="number"
-                    min={1}
-                    max={ceiling}
-                    className="plan-tune__input"
-                    autoComplete="off"
-                    placeholder={String(ceiling)}
-                    value={draft}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    aria-label={`Number of concepts, 1 to ${ceiling}`}
-                  />
-                  <span className="plan-tune__cap">/ {ceiling}</span>
-                </div>
-                <div className="plan-tune__row">
-                  <label htmlFor="plan-difficulty" className="plan-tune__label">
-                    Difficulty
-                  </label>
-                  <select
-                    id="plan-difficulty"
-                    className="plan-tune__select"
-                    value={difficulty}
-                    onChange={(e) => onDifficultyChange(e.target.value)}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  className="plan-tune__run"
-                  onClick={() => { runGenerate(); setTuneOpen(false); }}
-                  disabled={disabled || loading}
-                >
-                  {loading ? "Running…" : "Regenerate"}
-                </button>
-              </div>
-            </div>
-          )}
+          <p className="plan-env__meta">
+            {isAutoScanning
+              ? "Extracting ordered concepts from your file"
+              : hasPath
+              ? `We identified ${planResult.concepts.length} key concept${planResult.concepts.length !== 1 ? "s" : ""}. Adjust the count or click a concept to start learning.`
+              : "Upload a document to generate your learning path."}
+          </p>
         </div>
       </div>
 
-      {/* Shimmer skeleton while auto-scanning */}
+      {/* ── Concept stepper ────────────────── */}
+      {(hasPath || maxAllowed > 0) && !isAutoScanning && (
+        <div className="plan-stepper-row">
+          <span className="plan-stepper__label">Concepts:</span>
+          <div className="plan-stepper">
+            <button
+              type="button"
+              className="plan-stepper__btn"
+              aria-label="Fewer concepts"
+              disabled={disabled || loading || count <= 1}
+              onClick={() => step(-1)}
+            >
+              −
+            </button>
+            <span className="plan-stepper__count" aria-live="polite" aria-label={`${count} concepts`}>
+              {count}
+            </span>
+            <button
+              type="button"
+              className="plan-stepper__btn"
+              aria-label="More concepts"
+              disabled={disabled || loading || count >= ceiling}
+              onClick={() => step(+1)}
+            >
+              +
+            </button>
+          </div>
+          {maxAllowed > 0 && (
+            <span className="plan-stepper__cap">of {ceiling} max</span>
+          )}
+
+          {/* Difficulty inline */}
+          <div className="plan-stepper__difficulty">
+            <label htmlFor="plan-difficulty-inline" className="plan-stepper__diff-label">
+              Level
+            </label>
+            <select
+              id="plan-difficulty-inline"
+              className="plan-stepper__diff-select"
+              value={difficulty}
+              onChange={(e) => onDifficultyChange(e.target.value)}
+              disabled={disabled || loading}
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ── Skeleton ───────────────────────── */}
       {isAutoScanning && (
         <div className="concept-skeleton-grid" aria-label="Loading concepts" aria-busy="true">
           {[0, 60, 120, 180, 240, 300, 360, 420].map((delay, i) => (
@@ -205,7 +124,7 @@ export default function PlanStep({
         </div>
       )}
 
-      {/* Bento concept cards */}
+      {/* ── Concept cards ──────────────────── */}
       {hasPath && (
         <ol className="concept-grid" aria-label="Learning path">
           {planResult.concepts.map((c, i) => (
@@ -241,11 +160,11 @@ export default function PlanStep({
         </ol>
       )}
 
-      {/* Empty state — plan failed silently */}
+      {/* ── Empty state ────────────────────── */}
       {!isAutoScanning && !hasPath && (
         <div className="plan-env__empty">
           <p className="plan-env__empty-text">
-            Open <strong>Tune</strong> above to generate your learning path.
+            Upload a document above to generate your study plan.
           </p>
         </div>
       )}
