@@ -615,11 +615,11 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
     topic = (req.topic or state.topic).strip() or state.topic
     difficulty = (req.difficulty_level or state.overall_difficulty.value).strip()
 
-    # Auto-infer concept count when caller passes 0 (or omits it)
+    # Always compute the document's inherent ceiling so the UI can lock it in.
     raw_text = state.loaded_content.get("raw_text", "") if state.loaded_content else ""
-    max_concepts = (
-        _suggest_max_concepts(raw_text) if req.max_concepts <= 0 else req.max_concepts
-    )
+    document_max = _suggest_max_concepts(raw_text)
+    # Use the caller's requested count if supplied; otherwise default to the document ceiling.
+    max_concepts = req.max_concepts if req.max_concepts > 0 else document_max
 
     state.topic = topic
     state.overall_difficulty = _normalize_difficulty(difficulty)
@@ -640,7 +640,7 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
             "topic": topic,
             "difficulty_level": difficulty,
             "concepts": concepts,
-            "suggested_max_concepts": max_concepts,
+            "suggested_max_concepts": document_max,  # always the document ceiling, never the requested count
         }
     except Exception as e:
         tb = traceback.format_exc()
