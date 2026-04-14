@@ -767,7 +767,6 @@ p {
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
-  overflow: hidden;
   border-right: 1px solid var(--color-border);
 }
 

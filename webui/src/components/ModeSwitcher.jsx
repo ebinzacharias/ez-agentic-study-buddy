@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 const MODES = [
   {
@@ -59,13 +59,17 @@ export default function ModeSwitcher({ activeMode, onChange }) {
               className={`mode-tab${isActive ? " is-active" : ""}`}
               onClick={() => onChange(id)}
             >
-              {isActive && (
-                <motion.div
-                  className="mode-tab__indicator"
-                  layoutId="mode-pill"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                />
-              )}
+              <AnimatePresence>
+                {isActive && (
+                  <motion.div
+                    key="indicator"
+                    className="mode-tab__indicator"
+                    layoutId="mode-pill"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  />
+                )}
+              </AnimatePresence>
               <span className="mode-tab__icon">{icon}</span>
               <span className="mode-tab__content">
                 <span className="mode-tab__label">{label}</span>

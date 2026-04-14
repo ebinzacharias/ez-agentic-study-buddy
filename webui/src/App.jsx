@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   createUserFacingApiError,
   errorDisplayFromCaughtMessage,
@@ -107,6 +107,75 @@ export default function App() {
 
   const resetErrors = () => setError(null);
 
+  // ── Hash routing — sync URL with active tab ──────────────
+  const TAB_TO_HASH = { plan: "#path", teach: "#learn", quiz: "#quiz" };
+  const HASH_TO_TAB = { "#path": "plan", "#learn": "teach", "#quiz": "quiz" };
+
+  // Write hash whenever the session tab changes
+  useEffect(() => {
+    if (!sessionId) return;
+    const hash = TAB_TO_HASH[activeLearnTab] ?? "#path";
+    if (window.location.hash !== hash) {
+      window.history.replaceState(null, "", hash);
+    }
+  }, [activeLearnTab, sessionId]);
+
+  // Read hash on mount to restore active tab
+  useEffect(() => {
+    const tab = HASH_TO_TAB[window.location.hash];
+    if (tab) setActiveLearnTab(tab);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Session persistence — survive page refresh ───────────
+  const SK = { id: "ez_sid", topic: "ez_topic", diff: "ez_diff" };
+
+  // On mount: attempt to restore session from sessionStorage
+  useEffect(() => {
+    const storedId = sessionStorage.getItem(SK.id);
+    const storedTopic = sessionStorage.getItem(SK.topic);
+    const storedDiff = sessionStorage.getItem(SK.diff);
+    if (!storedId) return;
+
+    fetch(`${apiBaseUrl}/session/${storedId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          // Server restarted — session gone
+          Object.values(SK).forEach((k) => sessionStorage.removeItem(k));
+          return;
+        }
+        // Restore core state
+        setSessionId(storedId);
+        setTopic(data.topic || storedTopic || "");
+        if (storedDiff) setDifficulty(storedDiff);
+
+        // Auto-regenerate learning path (plan is not stored client-side)
+        const resolvedTopic = data.topic || storedTopic || "";
+        const resolvedDiff = storedDiff || "beginner";
+        fetch(`${apiBaseUrl}/session/${storedId}/plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: resolvedTopic,
+            difficulty_level: resolvedDiff,
+            max_concepts: 10,
+          }),
+        })
+          .then((r) => r.json())
+          .then((planData) => {
+            if (planData.concepts) {
+              setPlanResult(planData);
+              const first = planData.concepts?.[0]?.concept_name;
+              if (first) setSelectedConcept(first);
+            }
+          })
+          .catch(() => {/* silent — user can use Tune to retry */});
+      })
+      .catch(() => {
+        Object.values(SK).forEach((k) => sessionStorage.removeItem(k));
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const failResponse = (data) => {
     if (isSessionExpired(data)) {
       resetSession();
@@ -118,6 +187,11 @@ export default function App() {
   };
 
   const resetSession = () => {
+    // Clear persisted session
+    sessionStorage.removeItem(SK.id);
+    sessionStorage.removeItem(SK.topic);
+    sessionStorage.removeItem(SK.diff);
+    window.history.replaceState(null, "", " ");
     setSessionId("");
     setTopic("");
     setSuggestedTopic("");
@@ -177,6 +251,10 @@ export default function App() {
       setUploadResult(data);
       if (data.topic) setTopic(data.topic);
       if (data.suggested_topic) setSuggestedTopic(data.suggested_topic);
+      // Persist session so a refresh doesn't wipe everything
+      sessionStorage.setItem(SK.id, newSessionId);
+      sessionStorage.setItem(SK.topic, resolvedTopic);
+      sessionStorage.setItem(SK.diff, difficulty);
 
       // Step 2 — auto-generate learning path (smart default: 10 concepts)
       try {

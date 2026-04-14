@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function clampConcepts(n) {
   return Math.min(25, Math.max(1, n));
@@ -88,6 +88,20 @@ export default function PlanStep({
     onPlan(m);
   };
 
+  const [tuneOpen, setTuneOpen] = useState(false);
+  const tuneRef = useRef(null);
+
+  useEffect(() => {
+    if (!tuneOpen) return;
+    const handleOutside = (e) => {
+      if (tuneRef.current && !tuneRef.current.contains(e.target)) {
+        setTuneOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [tuneOpen]);
+
   const hasPath = Boolean(planResult?.concepts?.length);
   const isAutoScanning = loading && !hasPath;
 
@@ -115,40 +129,50 @@ export default function PlanStep({
           )}
         </div>
 
-        <details className="plan-tune" aria-label="Tune settings">
-          <summary className="plan-tune__trigger">
+        <div className="plan-tune" ref={tuneRef}>
+          <button
+            type="button"
+            className={`plan-tune__trigger${tuneOpen ? " is-open" : ""}`}
+            aria-expanded={tuneOpen}
+            aria-haspopup="true"
+            onClick={() => setTuneOpen((v) => !v)}
+          >
             <TuneIcon />
             Tune
-          </summary>
-          <div className="plan-tune__panel">
-            <p className="plan-tune__hint">Regenerating replaces the path and clears any downstream Learn / Quiz results.</p>
-            <div className="plan-tune__row">
-              <label htmlFor="plan-max-concepts-tune" className="plan-tune__label">
-                Concepts
-              </label>
-              <input
-                id="plan-max-concepts-tune"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                className="plan-tune__input"
-                autoComplete="off"
-                value={draft}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                aria-label="Max concepts, 1 to 25"
-              />
-              <button
-                type="button"
-                className="plan-tune__run"
-                onClick={runGenerate}
-                disabled={disabled || loading}
-              >
-                {loading ? "Running…" : "Regenerate"}
-              </button>
+          </button>
+          {tuneOpen && (
+            <div className="plan-tune__panel" role="dialog" aria-label="Tune learning path">
+              <p className="plan-tune__hint">
+                Regenerating replaces the path and clears any downstream Learn / Quiz results.
+              </p>
+              <div className="plan-tune__row">
+                <label htmlFor="plan-max-concepts-tune" className="plan-tune__label">
+                  Concepts
+                </label>
+                <input
+                  id="plan-max-concepts-tune"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="plan-tune__input"
+                  autoComplete="off"
+                  value={draft}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  aria-label="Max concepts, 1 to 25"
+                />
+                <button
+                  type="button"
+                  className="plan-tune__run"
+                  onClick={() => { runGenerate(); setTuneOpen(false); }}
+                  disabled={disabled || loading}
+                >
+                  {loading ? "Running…" : "Regenerate"}
+                </button>
+              </div>
             </div>
-          </div>
-        </details>
+          )}
+        </div>
       </div>
 
       {/* Shimmer skeleton while auto-scanning */}
