@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import SourcePreviewModal from "./SourcePreviewModal";
 
 function norm(s) {
@@ -70,6 +70,20 @@ export default function SessionControls({
   onReset,
 }) {
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef(null);
+
+  // Close settings when clicking anywhere outside the popover
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handleOutside = (e) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [settingsOpen]);
 
   const suggestedDiffers = suggestedTopic && norm(suggestedTopic) !== norm(topic);
 
@@ -93,10 +107,7 @@ export default function SessionControls({
           {fileLabel && <span className="session-bar__divider" aria-hidden="true" />}
           <div className="session-bar__topic-group">
             <span className="session-bar__label">Topic</span>
-            <span
-              className="session-bar__topic"
-              title={topic.trim() || undefined}
-            >
+            <span className="session-bar__topic" title={topic.trim() || undefined}>
               {topic.trim() ? topic : "Auto-detected"}
             </span>
           </div>
@@ -112,28 +123,38 @@ export default function SessionControls({
 
         {/* Right: settings popover + actions */}
         <div className="session-bar__actions">
-          <details className="session-settings" aria-label="Session settings">
-            <summary className="session-settings__trigger">
+          {/* Settings — React-controlled, closes on click-outside */}
+          <div className="session-settings" ref={settingsRef}>
+            <button
+              type="button"
+              className={`session-settings__trigger${settingsOpen ? " is-open" : ""}`}
+              aria-expanded={settingsOpen}
+              aria-haspopup="true"
+              onClick={() => setSettingsOpen((v) => !v)}
+            >
               <SettingsIcon />
               <span>Settings</span>
-            </summary>
-            <div className="session-settings__panel">
-              <label htmlFor="session-difficulty" className="session-settings__label">
-                Difficulty
-              </label>
-              <p className="session-settings__hint">{DIFF_HINT}</p>
-              <select
-                id="session-difficulty"
-                className="session-settings__select"
-                value={difficulty}
-                onChange={(e) => onDifficultyChange(e.target.value)}
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </div>
-          </details>
+            </button>
+
+            {settingsOpen && (
+              <div className="session-settings__panel" role="dialog" aria-label="Session settings">
+                <label htmlFor="session-difficulty" className="session-settings__label">
+                  Difficulty
+                </label>
+                <p className="session-settings__hint">{DIFF_HINT}</p>
+                <select
+                  id="session-difficulty"
+                  className="session-settings__select"
+                  value={difficulty}
+                  onChange={(e) => onDifficultyChange(e.target.value)}
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
