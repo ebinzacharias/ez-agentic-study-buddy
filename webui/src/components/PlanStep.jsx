@@ -104,7 +104,10 @@ export default function PlanStep({
               id="plan-difficulty-inline"
               className="plan-stepper__diff-select"
               value={difficulty}
-              onChange={(e) => onDifficultyChange(e.target.value)}
+              onChange={(e) => {
+                onDifficultyChange(e.target.value);
+                onPlan(count);
+              }}
               disabled={disabled || loading}
             >
               <option value="beginner">Beginner</option>

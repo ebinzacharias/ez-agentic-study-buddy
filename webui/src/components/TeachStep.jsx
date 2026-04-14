@@ -1,15 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 
 export default function TeachStep({
   selectedConcept,
-  teachContext,
   teachResult,
   loading,
-  onContextChange,
-  onTeach,
+  onStartQuiz,
 }) {
-  const [contextOpen, setContextOpen] = useState(false);
 
   if (!selectedConcept) {
     return (
@@ -51,40 +48,22 @@ export default function TeachStep({
             </ReactMarkdown>
           </article>
 
-          {/* Re-teach with context — collapsible footer */}
-          <div className="reteach">
-            <button
-              type="button"
-              className="reteach__toggle"
-              onClick={() => setContextOpen((v) => !v)}
-              aria-expanded={contextOpen}
-            >
-              {contextOpen ? "Hide" : "Teach me differently"}
-            </button>
-            {contextOpen && (
-              <div className="reteach__body">
-                <label htmlFor="reteach-context" className="reteach__label">
-                  Add context
-                </label>
-                <textarea
-                  id="reteach-context"
-                  className="reteach__textarea"
-                  value={teachContext}
-                  onChange={(e) => onContextChange(e.target.value)}
-                  placeholder="What do you already know? Where did you get stuck?"
-                  rows={3}
-                />
-                <button
-                  type="button"
-                  className="reteach__btn"
-                  onClick={() => { setContextOpen(false); onTeach(); }}
-                  disabled={loading}
-                >
-                  Re-teach
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Card footer — quiz CTA */}
+          {onStartQuiz && (
+            <div className="lesson-footer">
+              <button
+                type="button"
+                className="lesson-footer__quiz-cta"
+                onClick={onStartQuiz}
+                disabled={loading}
+              >
+                Test your knowledge
+                <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="learn-empty-state">
