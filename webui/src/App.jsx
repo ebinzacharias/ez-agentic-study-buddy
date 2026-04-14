@@ -63,6 +63,7 @@ function LoadingScreen({ file }) {
 import UploadStep from "./components/UploadStep";
 import MaterialPreview from "./components/MaterialPreview";
 import SessionControls from "./components/SessionControls";
+import SourcePreviewModal from "./components/SourcePreviewModal";
 import PlanStep from "./components/PlanStep";
 import TeachStep from "./components/TeachStep";
 import QuizStep from "./components/QuizStep";
@@ -104,6 +105,7 @@ export default function App() {
   const [evalResult, setEvalResult] = useState(null);
 
   const [nextAction, setNextAction] = useState(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
 
   const resetErrors = () => setError(null);
 
@@ -539,51 +541,66 @@ export default function App() {
       </a>
 
       <div className="app-top-sticky">
+        {/* ── Single unified nav bar ─────────────────────────── */}
         <header className="site-header">
           <div className="site-header__inner">
-            <div className="site-header__balance" aria-hidden="true" />
-            <div className="site-header__focus">
-              <div className="brand brand--showpiece">
-                <p className="brand__tagline">
-                  Upload. Path. Learn. Grounded in your data.
-                </p>
-                <h1 className="brand__title">
-                  <span className="brand__title-ez" aria-label="Easy">
-                    EZ
-                  </span>
-                  <span className="brand__title-rest">Study Lab</span>
-                </h1>
-              </div>
+
+            {/* Brand */}
+            <div className="site-header__brand">
+              <h1 className="brand__title">
+                <span className="brand__title-ez" aria-label="Easy">EZ</span>
+                <span className="brand__title-rest">Study Lab</span>
+              </h1>
             </div>
-            <aside className="site-header__aside" aria-label="System status">
-              <span className="header-version-badge">v1.0 · Active</span>
-              {showRuntimeBadge ? (
-                <span className="env-badge" title="Runtime hint from build env">
-                  Local · Groq
-                </span>
-              ) : null}
-            </aside>
+
+            {/* Mode tabs — inline, only when session active */}
+            {sessionId ? (
+              <ModeSwitcher
+                activeMode={activeLearnTab}
+                onChange={handleModeChange}
+              />
+            ) : null}
+
+            {/* Session actions */}
+            {sessionId ? (
+              <div className="site-header__actions">
+                <button
+                  type="button"
+                  className="session-btn session-btn--ghost"
+                  onClick={() => setSourceOpen(true)}
+                  disabled={loading}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                    <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Source
+                </button>
+                <button
+                  type="button"
+                  className="session-btn session-btn--reset"
+                  onClick={resetSession}
+                  disabled={loading}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                  New session
+                </button>
+              </div>
+            ) : null}
+
           </div>
         </header>
 
-        {sessionId ? (
-          <SessionControls
-            sessionId={sessionId}
-            apiBaseUrl={apiBaseUrl}
-            uploadResult={uploadResult}
-            topic={topic}
-            suggestedTopic={suggestedTopic}
-            loading={loading}
-            onReset={resetSession}
-          />
-        ) : null}
 
-        {sessionId ? (
-          <ModeSwitcher
-            activeMode={activeLearnTab}
-            onChange={handleModeChange}
-          />
-        ) : null}
+        <SourcePreviewModal
+          open={sourceOpen}
+          onClose={() => setSourceOpen(false)}
+          apiBaseUrl={apiBaseUrl}
+          sessionId={sessionId}
+          fileLabel={uploadResult?.materials?.map((m) => m.filename).filter(Boolean).join(", ") ?? null}
+        />
       </div>
 
       <main id="main-workspace" className="app-main">
