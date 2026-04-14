@@ -822,6 +822,12 @@ export default function App() {
                         loading={loading}
                         onContextChange={setTeachContext}
                         onTeach={runTeach}
+                        onStartQuiz={() => {
+                          if (selectedConcept) setQuizConcept(selectedConcept);
+                          setQuizResult(null);
+                          setEvalResult(null);
+                          setActiveLearnTab("quiz");
+                        }}
                       />
                     ) : null}
                   </div>
