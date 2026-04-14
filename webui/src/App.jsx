@@ -168,8 +168,7 @@ export default function App() {
               if (planData.concepts) {
               setPlanResult(planData);
               if (planData.suggested_max_concepts) {
-                setMaxConcepts(planData.suggested_max_concepts);
-                setMaxAllowed(planData.suggested_max_concepts);
+                setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
               }
               const first = planData.concepts?.[0]?.concept_name;
               if (first) setSelectedConcept(first);
@@ -279,8 +278,7 @@ export default function App() {
         if (planResp.ok) {
           setPlanResult(planData);
           if (planData.suggested_max_concepts) {
-            setMaxConcepts(planData.suggested_max_concepts);
-            setMaxAllowed(planData.suggested_max_concepts);
+            setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
           }
           const first = planData.concepts?.[0]?.concept_name;
           if (first) setSelectedConcept(first);
@@ -322,8 +320,7 @@ export default function App() {
       if (!resp.ok) failResponse(data);
       setPlanResult(data);
       if (data.suggested_max_concepts) {
-        setMaxConcepts(data.suggested_max_concepts);
-        setMaxAllowed(data.suggested_max_concepts);
+        setMaxAllowed((prev) => Math.max(prev, data.suggested_max_concepts));
       }
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
