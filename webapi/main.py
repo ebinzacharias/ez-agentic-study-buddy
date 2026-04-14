@@ -51,7 +51,7 @@ class EvaluateRequest(BaseModel):
 class PlanRequest(BaseModel):
     topic: str = ""
     difficulty_level: str = "beginner"
-    max_concepts: int = 10
+    max_concepts: int = 0  # 0 = auto-infer from document size/complexity
 
 
 SESSIONS: dict[str, StudySessionState] = {}
@@ -140,6 +140,52 @@ _TEMP_STEM_RE = re.compile(r"^tmp[a-z0-9_-]{5,}$", re.IGNORECASE)
 def _looks_like_temp_stem(s: str) -> bool:
     """Return True if a string looks like a generated temp-file name."""
     return bool(_TEMP_STEM_RE.match(s.strip()))
+
+
+def _suggest_max_concepts(raw_text: str) -> int:
+    """
+    Estimate a sensible concept count from document length and structure.
+
+    Signals used:
+      - Word count  → depth / how much ground the document covers
+      - Heading count (Markdown # lines) → explicit structural complexity
+
+    Intentionally conservative: it is better to generate a tight, focused
+    path and let the user request more via Tune than to overwhelm them with
+    too many concepts on a short document.
+
+    The result is clamped to [3, 15].
+    """
+    if not raw_text or not raw_text.strip():
+        return 5
+
+    words = len(raw_text.split())
+
+    heading_count = sum(
+        1 for line in raw_text.splitlines()
+        if re.match(r"^#{1,6}\s+\S", line.strip())
+    )
+
+    # Base concept count — deliberately conservative
+    if words < 300:
+        base = 3
+    elif words < 800:
+        base = 4
+    elif words < 2_000:
+        base = 5
+    elif words < 5_000:
+        base = 7
+    elif words < 10_000:
+        base = 9
+    elif words < 20_000:
+        base = 12
+    else:
+        base = 15
+
+    # Every 3 headings suggests one extra concept, capped at +3
+    heading_boost = min(heading_count // 3, 3)
+
+    return max(3, min(15, base + heading_boost))
 
 
 def _letter_count(s: str) -> int:
@@ -568,7 +614,12 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
 
     topic = (req.topic or state.topic).strip() or state.topic
     difficulty = (req.difficulty_level or state.overall_difficulty.value).strip()
-    max_concepts = req.max_concepts
+
+    # Auto-infer concept count when caller passes 0 (or omits it)
+    raw_text = state.loaded_content.get("raw_text", "") if state.loaded_content else ""
+    max_concepts = (
+        _suggest_max_concepts(raw_text) if req.max_concepts <= 0 else req.max_concepts
+    )
 
     state.topic = topic
     state.overall_difficulty = _normalize_difficulty(difficulty)
@@ -589,6 +640,7 @@ def session_plan(session_id: str, req: PlanRequest) -> dict[str, Any]:
             "topic": topic,
             "difficulty_level": difficulty,
             "concepts": concepts,
+            "suggested_max_concepts": max_concepts,
         }
     except Exception as e:
         tb = traceback.format_exc()
@@ -630,6 +682,7 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
         )
         state.add_concept(concept)
         state.mark_concept_taught(concept)
+        state.current_concept = concept  # anchor state so next_action resolves correctly
         # Check if tool returned an error string (prefixed with [error:...])
         if isinstance(explanation, str) and explanation.startswith("[error:"):
             code = explanation.split("]")[0].replace("[error:", "")

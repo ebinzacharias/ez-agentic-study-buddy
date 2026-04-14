@@ -46,31 +46,44 @@ def plan_learning_path(
     """
     llm = get_llm_client()
 
-    material_block = ""
     if source_material.strip():
-        material_block = f"""
---- BEGIN USER-UPLOADED STUDY MATERIAL ---
+        material_section = f"""
+--- BEGIN UPLOADED STUDY MATERIAL ---
 {source_material[:3000]}
---- END USER-UPLOADED STUDY MATERIAL ---
+--- END UPLOADED STUDY MATERIAL ---"""
+        source_instruction = f"""
+You are building a learning path STRICTLY from the uploaded material above.
 
-IMPORTANT: Derive the concepts primarily from the study material above.
-Only add general-knowledge concepts if the material is insufficient.
-"""
-    
-    prompt = f"""Break down the topic "{topic}" into {max_concepts} key concepts to teach.
-{material_block}
-Requirements:
-- Create a logical learning sequence where each concept builds on previous ones
+Step 1 — Identify every distinct concept present in the material.
+Step 2 — Rank them by importance to understanding the material (most central ideas first).
+Step 3 — Select the TOP {max_concepts} most important concepts.
+Step 4 — Re-order the selected concepts into a logical learning sequence (prerequisites first).
+
+Rules:
+- Every concept MUST come directly from the uploaded material. Do NOT invent or add outside knowledge.
+- If the material contains fewer than {max_concepts} distinct concepts, return only what is there.
+- Concept names must be concise (2–6 words) and reflect the actual content of the material.
 - Overall difficulty level: {difficulty_level}
-- Each concept should be specific and focused
-- Order concepts from fundamental to advanced
-- Consider prerequisites between concepts
+"""
+    else:
+        material_section = ""
+        source_instruction = f"""
+Break down the topic "{topic}" into up to {max_concepts} key concepts.
 
-Return ONLY a numbered list of concept names, one per line, in the order they should be taught.
+Requirements:
+- Create a logical learning sequence where each concept builds on the previous ones
+- Overall difficulty level: {difficulty_level}
+- Order from fundamental to advanced, considering prerequisites
+- Each concept should be specific and focused
+"""
+
+    prompt = f"""Task: produce a numbered learning-path list.
+{material_section}
+{source_instruction}
+Return ONLY a numbered list of concept names, one per line. No explanations, no headers.
 Format:
-1. Concept Name 1
-2. Concept Name 2
-3. Concept Name 3
+1. Concept Name
+2. Concept Name
 ..."""
 
     try:

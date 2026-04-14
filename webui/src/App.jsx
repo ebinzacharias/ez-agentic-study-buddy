@@ -66,7 +66,6 @@ import SessionControls from "./components/SessionControls";
 import PlanStep from "./components/PlanStep";
 import TeachStep from "./components/TeachStep";
 import QuizStep from "./components/QuizStep";
-import NextActionBanner from "./components/NextActionBanner";
 import ModeSwitcher from "./components/ModeSwitcher";
 import QuizProgressTracker from "./components/QuizProgressTracker";
 
@@ -91,7 +90,8 @@ export default function App() {
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
-  const [maxConcepts, setMaxConcepts] = useState(10);
+  const [maxConcepts, setMaxConcepts] = useState(0); // 0 = auto-infer from document
+  const [maxAllowed, setMaxAllowed] = useState(0);   // ceiling set by document complexity
 
   const [selectedConcept, setSelectedConcept] = useState("");
   const [teachContext, setTeachContext] = useState("");
@@ -158,13 +158,17 @@ export default function App() {
           body: JSON.stringify({
             topic: resolvedTopic,
             difficulty_level: resolvedDiff,
-            max_concepts: 10,
+            max_concepts: 0,
           }),
         })
           .then((r) => r.json())
           .then((planData) => {
-            if (planData.concepts) {
+              if (planData.concepts) {
               setPlanResult(planData);
+              if (planData.suggested_max_concepts) {
+                setMaxConcepts(planData.suggested_max_concepts);
+                setMaxAllowed(planData.suggested_max_concepts);
+              }
               const first = planData.concepts?.[0]?.concept_name;
               if (first) setSelectedConcept(first);
             }
@@ -198,6 +202,8 @@ export default function App() {
     setFile(null);
     setUploadResult(null);
     setPlanResult(null);
+    setMaxConcepts(0);
+    setMaxAllowed(0);
     setTeachResult(null);
     setSelectedConcept("");
     setTeachContext("");
@@ -256,7 +262,7 @@ export default function App() {
       sessionStorage.setItem(SK.topic, resolvedTopic);
       sessionStorage.setItem(SK.diff, difficulty);
 
-      // Step 2 — auto-generate learning path (smart default: 10 concepts)
+      // Step 2 — auto-generate learning path (concept count inferred from document)
       try {
         const planResp = await fetch(`${apiBaseUrl}/session/${newSessionId}/plan`, {
           method: "POST",
@@ -264,12 +270,16 @@ export default function App() {
           body: JSON.stringify({
             topic: resolvedTopic,
             difficulty_level: difficulty,
-            max_concepts: maxConcepts,
+            max_concepts: 0,
           }),
         });
         const planData = await planResp.json();
         if (planResp.ok) {
           setPlanResult(planData);
+          if (planData.suggested_max_concepts) {
+            setMaxConcepts(planData.suggested_max_concepts);
+            setMaxAllowed(planData.suggested_max_concepts);
+          }
           const first = planData.concepts?.[0]?.concept_name;
           if (first) setSelectedConcept(first);
         }
@@ -309,6 +319,10 @@ export default function App() {
       const data = await resp.json();
       if (!resp.ok) failResponse(data);
       setPlanResult(data);
+      if (data.suggested_max_concepts) {
+        setMaxConcepts(data.suggested_max_concepts);
+        setMaxAllowed(data.suggested_max_concepts);
+      }
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
@@ -319,12 +333,13 @@ export default function App() {
     }
   };
 
-  const runTeach = async () => {
+  const runTeach = async (conceptOverride, contextOverride) => {
     if (!sessionId) {
       setError({ title: "Upload material first" });
       return;
     }
-    if (!selectedConcept.trim()) {
+    const concept = (typeof conceptOverride === "string" ? conceptOverride : selectedConcept).trim();
+    if (!concept) {
       setError({ title: "Pick a concept to learn" });
       return;
     }
@@ -336,9 +351,9 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          concept_name: selectedConcept,
+          concept_name: concept,
           difficulty_level: difficulty,
-          context: teachContext,
+          context: typeof contextOverride === "string" ? contextOverride : teachContext,
         }),
       });
       const data = await resp.json();
@@ -456,6 +471,21 @@ export default function App() {
     setQuizAnswers({});
     setEvalResult(null);
     setQuizConcept("");
+    // Defer to next tick so React commits the tab switch before the API call fires
+    setTimeout(() => runTeach(name, ""), 0);
+  };
+
+  const handleModeChange = (mode) => {
+    setActiveLearnTab(mode);
+    if (mode === "teach" && !teachResult && !loading) {
+      // Auto-load first concept when entering Learn tab with no lesson active
+      const first =
+        selectedConcept || planResult?.concepts?.[0]?.concept_name;
+      if (first) {
+        if (!selectedConcept) setSelectedConcept(first);
+        setTimeout(() => runTeach(first, ""), 0);
+      }
+    }
   };
 
   const clearQuizProgress = () => {
@@ -543,9 +573,7 @@ export default function App() {
             uploadResult={uploadResult}
             topic={topic}
             suggestedTopic={suggestedTopic}
-            difficulty={difficulty}
             loading={loading}
-            onDifficultyChange={setDifficulty}
             onReset={resetSession}
           />
         ) : null}
@@ -553,7 +581,7 @@ export default function App() {
         {sessionId ? (
           <ModeSwitcher
             activeMode={activeLearnTab}
-            onChange={setActiveLearnTab}
+            onChange={handleModeChange}
           />
         ) : null}
       </div>
@@ -740,11 +768,6 @@ export default function App() {
                   </div>
                 ) : null}
 
-                <NextActionBanner
-                  nextAction={nextAction}
-                  loading={loading}
-                  onFollow={followNextAction}
-                />
 
                 <div key={activeLearnTab} className="stage-panels mode-panel-transition">
                   <div
@@ -757,10 +780,13 @@ export default function App() {
                     {activeLearnTab === "plan" ? (
                       <PlanStep
                         maxConcepts={maxConcepts}
+                        maxAllowed={maxAllowed}
+                        difficulty={difficulty}
                         planResult={planResult}
                         loading={loading}
                         disabled={!sessionId}
                         onMaxConceptsChange={setMaxConcepts}
+                        onDifficultyChange={setDifficulty}
                         onPlan={runPlan}
                         onPickConcept={selectConceptFromRail}
                       />
@@ -779,9 +805,7 @@ export default function App() {
                         selectedConcept={selectedConcept}
                         teachContext={teachContext}
                         teachResult={teachResult}
-                        planResult={planResult}
                         loading={loading}
-                        onConceptChange={setSelectedConcept}
                         onContextChange={setTeachContext}
                         onTeach={runTeach}
                       />
