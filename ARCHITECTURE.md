@@ -4,10 +4,10 @@
 
 ```mermaid
 flowchart TD
-    style Web fill:#1E1E2F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
-    style Core fill:#1E1E2F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    style Web fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,color:#1E3A5F
+    style Core fill:#D1FAE5,stroke:#10B981,stroke-width:2px,color:#064E3B
 
-    linkStyle default stroke:#FFFFFF,stroke-width:2px
+    linkStyle default stroke:#6366F1,stroke-width:2px
 
     subgraph Web[Web Layer]
         UI[React UI + Vite]
@@ -316,12 +316,12 @@ classDiagram
 
 ```mermaid
 flowchart LR
-    style Observe fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
-    style Decide fill:#2D2D3F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
-    style Act fill:#2D2D3F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    style UpdateState fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style Observe fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,color:#1E3A5F
+    style Decide fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
+    style Act fill:#D1FAE5,stroke:#10B981,stroke-width:2px,color:#064E3B
+    style UpdateState fill:#EDE9FE,stroke:#8B5CF6,stroke-width:2px,color:#4C1D95
 
-    linkStyle default stroke:#FFFFFF,stroke-width:2px
+    linkStyle default stroke:#6366F1,stroke-width:2px
 
     Start([Start Session]) --> Observe[OBSERVE]
     
@@ -350,9 +350,9 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    style ToolLayer fill:#1E1E2F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    style ToolLayer fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
 
-    linkStyle default stroke:#FFFFFF,stroke-width:2px
+    linkStyle default stroke:#6366F1,stroke-width:2px
 
     Agent[StudyBuddyAgent] --> ToolExec[ToolExecutor]
     
@@ -483,12 +483,12 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    style Observe fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
-    style Decide fill:#2D2D3F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
-    style Act fill:#2D2D3F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    style Output fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style Observe fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,color:#1E3A5F
+    style Decide fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
+    style Act fill:#D1FAE5,stroke:#10B981,stroke-width:2px,color:#064E3B
+    style Output fill:#EDE9FE,stroke:#8B5CF6,stroke-width:2px,color:#4C1D95
 
-    linkStyle default stroke:#FFFFFF,stroke-width:2px
+    linkStyle default stroke:#6366F1,stroke-width:2px
 
     Input[Input State] --> Observe[Observe Chain]
     Observe --> Decide[Decide Chain]
