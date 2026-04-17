@@ -510,16 +510,18 @@ step_chain = (
 ### ✅ Implemented Components
 
 - **Web Layer**: FastAPI backend with session management, content loading, upload-first UX
-- **React Frontend**: Vite-based upload → plan → teach → quiz → evaluate UI
-- **Content Loader**: Parses `.txt`, `.md`, `.json`, optional `.pdf`
+- **React Frontend**: Vite-based UI — UploadStep, PlanStep, TeachStep, QuizStep, ModeSwitcher, SessionControls, QuizProgressTracker, MaterialPreview, SourcePreviewModal
+- **Content Loader**: Parses `.txt`, `.md`, `.json`, `.pdf` (PyMuPDF)
 - **Core Agent**: StudyBuddyAgent with ReAct loop using LCEL chains
 - **State Management**: Complete state tracking with Pydantic models
 - **Decision Rules**: Rule-based decision making with explicit logic and next-action guidance
 - **Retry Manager**: Retry mechanisms with alternative strategies
 - **Quiz Workflow**: Complete quiz generation and evaluation workflow
-- **All Tools**: Planner, Teacher, Quizzer, Evaluator, Adapter
+- **All Tools**: Planner, Teacher, Quizzer, Evaluator, Adapter (in `agent/tools/`)
 - **LCEL Chains**: Declarative chain composition for ReAct loop
 - **Error Handling**: Comprehensive error handling, session expiry detection, and edge cases
+- **Design System**: v2.0.0 tokens, UI-STYLE-GUARDIAN skill, components-reference.md
+- **Agentic Skills**: UI-STYLE-GUARDIAN (design enforcement), REPO-AUDITOR (codebase health)
 - **Testing**: 19 test files — end-to-end, unit, schema validation, workflow interaction tests
 - **CI Pipeline**: GitHub Actions with ruff, mypy, and pytest
 

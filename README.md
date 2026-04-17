@@ -158,13 +158,13 @@ agent/
   core/           # Agent, state, decision rules, retry manager, quiz workflow, tool executor
   chains/         # LCEL chain composition (observe → decide → act)
   tools/          # Planner, Teacher, Quizzer, Evaluator, Adapter
-  agents/         # Agent classes (Planner, Teacher, Quizzer, Adapter)
   utils/          # LLM client, content loader
 webapi/
   main.py         # FastAPI backend — sessions, upload, plan, teach, quiz, evaluate
 webui/
   src/            # React frontend (Vite)
-    components/   # LandingHero, UploadStep, PlanStep, TeachStep, QuizStep, SessionControls
+    components/   # UploadStep, PlanStep, TeachStep, QuizStep, ModeSwitcher, SessionControls,
+                  # QuizProgressTracker, MaterialPreview, SourcePreviewModal
     style.css     # Design tokens, animations, responsive breakpoints
 .github/
   copilot-agents/ # Agentic skills for Copilot
