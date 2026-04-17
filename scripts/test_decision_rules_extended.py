@@ -5,14 +5,8 @@ add_concept trigger, adapt_difficulty, session_complete, retry
 strategy rotation, and quizzed-with-passing-score transitions.
 """
 
-import pytest
-
 from agent.core.decision_rules import DecisionRules
-from agent.core.state import (
-    ConceptStatus,
-    DifficultyLevel,
-    StudySessionState,
-)
+from agent.core.state import StudySessionState
 
 
 def _state(topic: str = "Python") -> StudySessionState:
