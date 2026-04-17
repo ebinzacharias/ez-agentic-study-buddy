@@ -104,11 +104,11 @@ See [USAGE.md](USAGE.md) for the full usage guide.
 
 ```mermaid
 flowchart TD
-    style WebLayer fill:#1E1E2F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
-    style AgentCore fill:#1E1E2F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
-    style ToolLayer fill:#1E1E2F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    style WebLayer fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,color:#1E3A5F
+    style AgentCore fill:#D1FAE5,stroke:#10B981,stroke-width:2px,color:#064E3B
+    style ToolLayer fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
 
-    linkStyle default stroke:#FFFFFF,stroke-width:2px
+    linkStyle default stroke:#6366F1,stroke-width:2px
 
     subgraph WebLayer[Web Layer]
         UI[React UI + Vite]
