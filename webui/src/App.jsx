@@ -91,8 +91,6 @@ export default function App() {
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
-  const [maxConcepts, setMaxConcepts] = useState(0); // 0 = auto-infer from document
-  const [maxAllowed, setMaxAllowed] = useState(0);   // ceiling set by document complexity
 
   const [selectedConcept, setSelectedConcept] = useState("");
   const [teachContext, setTeachContext] = useState("");
@@ -103,6 +101,7 @@ export default function App() {
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
+  const [completedConcepts, setCompletedConcepts] = useState(new Set());
 
   const [nextAction, setNextAction] = useState(null);
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -167,9 +166,6 @@ export default function App() {
           .then((planData) => {
               if (planData.concepts) {
               setPlanResult(planData);
-              if (planData.suggested_max_concepts) {
-                setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
-              }
               const first = planData.concepts?.[0]?.concept_name;
               if (first) setSelectedConcept(first);
             }
@@ -203,8 +199,6 @@ export default function App() {
     setFile(null);
     setUploadResult(null);
     setPlanResult(null);
-    setMaxConcepts(0);
-    setMaxAllowed(0);
     setTeachResult(null);
     setSelectedConcept("");
     setTeachContext("");
@@ -277,9 +271,6 @@ export default function App() {
         const planData = await planResp.json();
         if (planResp.ok) {
           setPlanResult(planData);
-          if (planData.suggested_max_concepts) {
-            setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
-          }
           const first = planData.concepts?.[0]?.concept_name;
           if (first) setSelectedConcept(first);
         }
@@ -294,15 +285,11 @@ export default function App() {
     }
   };
 
-  const runPlan = async (maxConceptsOverride) => {
+  const runPlan = async () => {
     if (!sessionId) {
       setError({ title: "Upload material first" });
       return;
     }
-    const maxConceptsToUse =
-      typeof maxConceptsOverride === "number" && !Number.isNaN(maxConceptsOverride)
-        ? maxConceptsOverride
-        : maxConcepts;
     setLoading(true);
     resetErrors();
     clearDownstream();
@@ -313,15 +300,12 @@ export default function App() {
         body: JSON.stringify({
           topic,
           difficulty_level: difficulty,
-          max_concepts: maxConceptsToUse,
+          max_concepts: 0,
         }),
       });
       const data = await resp.json();
       if (!resp.ok) failResponse(data);
       setPlanResult(data);
-      if (data.suggested_max_concepts) {
-        setMaxAllowed((prev) => Math.max(prev, data.suggested_max_concepts));
-      }
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
@@ -747,11 +731,16 @@ export default function App() {
                             <li key={`${c.order}-${c.concept_name}`}>
                               <button
                                 type="button"
-                                className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""} ${completedConcepts.has(c.concept_name) ? "is-completed" : ""}`}
                                 onClick={() => selectConceptFromRail(c.concept_name)}
                               >
                                 <span className="concept-rail__order">{c.order}</span>
                                 <span className="concept-rail__name">{c.concept_name}</span>
+                                {completedConcepts.has(c.concept_name) && (
+                                  <svg className="concept-rail__check" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-label="Completed">
+                                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
                               </button>
                             </li>
                           ))}
@@ -793,15 +782,10 @@ export default function App() {
                   >
                     {activeLearnTab === "plan" ? (
                       <PlanStep
-                        maxConcepts={maxConcepts}
-                        maxAllowed={maxAllowed}
-                        difficulty={difficulty}
                         planResult={planResult}
                         loading={loading}
                         disabled={!sessionId}
-                        onMaxConceptsChange={setMaxConcepts}
-                        onDifficultyChange={setDifficulty}
-                        onPlan={runPlan}
+                        completedConcepts={completedConcepts}
                         onPickConcept={selectConceptFromRail}
                       />
                     ) : null}
@@ -820,8 +804,10 @@ export default function App() {
                         teachContext={teachContext}
                         teachResult={teachResult}
                         loading={loading}
+                        completed={completedConcepts.has(selectedConcept)}
                         onContextChange={setTeachContext}
                         onTeach={runTeach}
+                        onMarkComplete={() => setCompletedConcepts((s) => new Set(s).add(selectedConcept))}
                         onStartQuiz={() => {
                           if (selectedConcept) setQuizConcept(selectedConcept);
                           setQuizResult(null);
@@ -845,6 +831,7 @@ export default function App() {
                         quizConcept={quizConcept}
                         selectedConcept={selectedConcept}
                         numQuestions={numQuestions}
+                        difficulty={difficulty}
                         quizResult={quizResult}
                         quizAnswers={quizAnswers}
                         evalResult={evalResult}
@@ -852,6 +839,7 @@ export default function App() {
                         loading={loading}
                         onQuizConceptChange={setQuizConcept}
                         onNumQuestionsChange={setNumQuestions}
+                        onDifficultyChange={setDifficulty}
                         onAnswerChange={(qNum, opt) =>
                           setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
                         }

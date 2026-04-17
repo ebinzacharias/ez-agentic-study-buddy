@@ -5,7 +5,9 @@ export default function TeachStep({
   selectedConcept,
   teachResult,
   loading,
+  completed,
   onStartQuiz,
+  onMarkComplete,
 }) {
 
   if (!selectedConcept) {
@@ -48,9 +50,28 @@ export default function TeachStep({
             </ReactMarkdown>
           </article>
 
-          {/* Card footer — quiz CTA */}
-          {onStartQuiz && (
-            <div className="lesson-footer">
+          {/* Card footer — actions */}
+          <div className="lesson-footer">
+            {onMarkComplete && (
+              <button
+                type="button"
+                className={`lesson-footer__complete-btn ${completed ? "lesson-footer__complete-btn--done" : ""}`}
+                onClick={onMarkComplete}
+                disabled={loading || completed}
+              >
+                {completed ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Completed
+                  </>
+                ) : (
+                  "Mark as complete"
+                )}
+              </button>
+            )}
+            {onStartQuiz && (
               <button
                 type="button"
                 className="lesson-footer__quiz-cta"
@@ -62,8 +83,8 @@ export default function TeachStep({
                   <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ) : (
         <div className="learn-empty-state">
