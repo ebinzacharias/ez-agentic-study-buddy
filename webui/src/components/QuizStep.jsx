@@ -5,6 +5,7 @@ export default function QuizStep({
   quizConcept,
   selectedConcept,
   numQuestions,
+  difficulty,
   quizResult,
   quizAnswers,
   evalResult,
@@ -12,6 +13,7 @@ export default function QuizStep({
   loading,
   onQuizConceptChange,
   onNumQuestionsChange,
+  onDifficultyChange,
   onAnswerChange,
   onGenerateQuiz,
   onEvaluate,
@@ -67,8 +69,10 @@ export default function QuizStep({
         {phase === "setup" && (
           <div className="card card--stage quiz-environment__setup">
             <h3 className="quiz-environment__heading">Quiz</h3>
-            <div className="row">
-              <div className="field">
+
+            <div className="quiz-setup">
+              {/* Concept — full width */}
+              <div className="quiz-setup__concept">
                 <label htmlFor="quiz-concept">Concept</label>
                 {planResult ? (
                   <select
@@ -94,38 +98,55 @@ export default function QuizStep({
                 )}
               </div>
 
-              <div className="field">
-                <label>Questions</label>
-                <div className="plan-stepper" aria-label={`${numQuestions} questions`}>
-                  <button
-                    type="button"
-                    className="plan-stepper__btn"
-                    aria-label="Fewer questions"
-                    disabled={loading || numQuestions <= MIN_Q}
-                    onClick={() => stepQ(-1)}
-                  >−</button>
-                  <span className="plan-stepper__count">{numQuestions}</span>
-                  <button
-                    type="button"
-                    className="plan-stepper__btn"
-                    aria-label="More questions"
-                    disabled={loading || numQuestions >= MAX_Q}
-                    onClick={() => stepQ(+1)}
-                  >+</button>
+              {/* Questions + Depth — side by side */}
+              <div className="quiz-setup__options">
+                <div className="quiz-setup__field">
+                  <label>Questions</label>
+                  <div className="plan-stepper" aria-label={`${numQuestions} questions`}>
+                    <button
+                      type="button"
+                      className="plan-stepper__btn"
+                      aria-label="Fewer questions"
+                      disabled={loading || numQuestions <= MIN_Q}
+                      onClick={() => stepQ(-1)}
+                    >−</button>
+                    <span className="plan-stepper__count">{numQuestions}</span>
+                    <button
+                      type="button"
+                      className="plan-stepper__btn"
+                      aria-label="More questions"
+                      disabled={loading || numQuestions >= MAX_Q}
+                      onClick={() => stepQ(+1)}
+                    >+</button>
+                  </div>
+                </div>
+
+                <div className="quiz-setup__field">
+                  <label htmlFor="quiz-depth">Depth</label>
+                  <select
+                    id="quiz-depth"
+                    value={difficulty}
+                    onChange={(e) => onDifficultyChange(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="beginner">Essentials</option>
+                    <option value="intermediate">In-depth</option>
+                    <option value="advanced">Expert</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="field actions field--primary-action">
-                <label className="label-placeholder">&nbsp;</label>
-                <button
-                  type="button"
-                  onClick={onGenerateQuiz}
-                  disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
-                >
-                  {loading ? "Generating…" : "Generate quiz"}
-                </button>
-              </div>
+              {/* Generate button — full width */}
+              <button
+                type="button"
+                className="quiz-setup__generate"
+                onClick={onGenerateQuiz}
+                disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
+              >
+                {loading ? "Generating…" : "Generate quiz"}
+              </button>
             </div>
+
             <div className="hint">
               Questions are grounded in your uploaded material.
             </div>

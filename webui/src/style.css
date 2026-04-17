@@ -2026,6 +2026,21 @@ p {
   pointer-events: none;
 }
 
+.concept-card--completed {
+  border-color: var(--color-success, #10b981);
+}
+
+.concept-card--completed .concept-card__num {
+  color: var(--color-success, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.concept-card--completed .concept-card__learn-hint {
+  color: var(--color-success, #10b981);
+}
+
 .concept-card__num {
   font-family: ui-monospace, "SF Mono", monospace;
   font-size: 22px;
@@ -2215,6 +2230,65 @@ p {
   flex-shrink: 0;
 }
 
+/* ── Quiz setup layout ───────────────────────────────── */
+.quiz-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.quiz-setup__concept {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quiz-setup__options {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-end;
+}
+
+.quiz-setup__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quiz-setup__field:first-child {
+  flex: 0 0 auto;
+}
+
+.quiz-setup__field:last-child {
+  flex: 1;
+  min-width: 120px;
+}
+
+.quiz-setup__generate {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: var(--text-body);
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--color-bg-page);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.quiz-setup__generate:hover:not(:disabled) {
+  background: var(--color-primary-hover, #1a1a2e);
+  box-shadow: var(--shadow-card);
+}
+
+.quiz-setup__generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .learn-environment--empty {
   display: flex;
   align-items: center;
@@ -2272,9 +2346,46 @@ p {
 .lesson-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
   margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
+}
+
+.lesson-footer__complete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.lesson-footer__complete-btn:hover:not(:disabled) {
+  background: var(--color-bg-input);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.lesson-footer__complete-btn--done {
+  color: var(--color-success, #10b981);
+  border-color: var(--color-success, #10b981);
+  background: rgba(16, 185, 129, 0.08);
+  cursor: default;
+}
+
+.lesson-footer__complete-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .lesson-footer__quiz-cta {
@@ -2711,6 +2822,20 @@ button.btn-plan-path:hover:not(:disabled) {
 .concept-rail__btn.is-active {
   border-color: var(--color-accent);
   background: var(--color-accent-dim);
+}
+
+.concept-rail__btn.is-completed {
+  border-color: var(--color-success, #10b981);
+}
+
+.concept-rail__btn.is-completed .concept-rail__order {
+  color: var(--color-success, #10b981);
+}
+
+.concept-rail__check {
+  flex-shrink: 0;
+  color: var(--color-success, #10b981);
+  margin-left: auto;
 }
 
 .concept-rail__order {
