@@ -42,7 +42,7 @@ Built to demonstrate practical agentic AI patterns: ReAct loops, rule-based deci
 
 ```mermaid
 flowchart TD
-    classDef layer fill:#2D2D3F,stroke:#FFFFFF,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef layer fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#1E293B,font-weight:bold
 
     subgraph Web[Web Layer]
         direction TB

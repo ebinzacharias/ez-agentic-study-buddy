@@ -124,7 +124,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    classDef layer fill:#2D2D3F,stroke:#FFFFFF,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef layer fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#1E293B,font-weight:bold
 
     subgraph UserLayer[User Layer]
         direction TB
@@ -185,7 +185,7 @@ The loop continues until all concepts are mastered or the iteration limit is rea
 
 ```mermaid
 flowchart LR
-    classDef phase fill:#2D2D3F,stroke:#FFFFFF,stroke-width:2px,color:#FFFFFF,font-weight:bold
+    classDef phase fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#1E293B,font-weight:bold
 
     Start([Start]) ==> Observe[Observe]
     Observe ==> Decide[Decide]

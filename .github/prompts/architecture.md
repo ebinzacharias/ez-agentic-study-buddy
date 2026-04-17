@@ -105,7 +105,7 @@ Include a Mermaid diagram that follows:
 - Keep flow linear and readable
 
 ### Styling
-classDef proNode fill:#2D2D3F,stroke:#FFFFFF,stroke-width:2px,color:#FFFFFF,font-weight:bold,font-size:16px
+classDef proNode fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#1E293B,font-weight:bold,font-size:16px
 
 ---
 
