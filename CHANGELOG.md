@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (April 2026)
+- **README.md rewritten** — direct, technical tone; removed marketing language and emojis; added dark SaaS-style architecture diagram with layered subgraphs
+- **ARCHITECTURE.md rewritten** — restructured as Overview, Components, Data Flow, Architecture Diagram, ReAct Loop, Design Decisions; added sequence diagram and layered Mermaid diagram
+- **CHANGELOG.md cleaned** — removed references to deleted components; documented recent cleanup
+
+### Removed
+- `agent/agents/` directory — `adapter_agent.py`, `planner_agent.py`, `quizzer_agent.py`, `teacher_agent.py` (legacy agent classes superseded by tool-based architecture in `agent/tools/`)
+- `agent/core/orchestrator.py` — legacy orchestration pattern replaced by `StudyBuddyAgent` + `ToolExecutor`
+- `webui/src/components/LandingHero.jsx` — not imported in App.jsx
+- `webui/src/components/NextActionBanner.jsx` — not imported in App.jsx
+- `DESIGN_SYSTEM.md` — redundant with `.github/copilot-agents/UI-STYLE-GUARDIAN/` files
+
+### Added
+- **Agentic Skills** (`.github/copilot-agents/`)
+  - `UI-STYLE-GUARDIAN/` — design system enforcement (SKILL.md, design-tokens.json v2.0.0, components-reference.md)
+  - `REPO-AUDITOR/` — codebase audit and cleanup (SKILL.md, audit-checklist.md)
+
+---
+
+## Previous Changes
+
 ### Changed
 - **Reproducible Python env**: `uv.lock` is committed; `.gitignore` no longer excludes it. Use `uv sync --locked` (CI uses `uv sync --extra web --group dev --locked`).
 - **Dev dependencies**: `[dependency-groups].dev` pins **ruff 0.11.7** (matches pre-commit **v0.11.7**), plus mypy and pytest; CI no longer installs tools with unversioned `uv pip install`.
@@ -31,9 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON key-value and nested structure parsing
   - File validation, word count, and summary context helpers
 - **React Frontend** (`webui/`)
-  - Vite-based React app for the upload → plan → teach → quiz → evaluate flow
-- **Agent classes** (`agent/agents/`)
-  - `PlannerAgent`, `TeacherAgent`, `QuizzerAgent`, `AdapterAgent`
+  - Vite-based React app for the upload, plan, teach, quiz, evaluate flow
 - **Quiz schema enforcement** — multiple-choice only, grounded in uploaded content
 - **Test suite expansion**
   - `test_agent_workflow_interactions.py` — API workflow interaction tests
