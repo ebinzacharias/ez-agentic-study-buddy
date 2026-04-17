@@ -26,6 +26,8 @@ It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decisio
 | **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
 | **Content Loading** | Parses `.txt`, `.md`, `.json`, and `.pdf` (PyMuPDF is a normal dependency). |
 | **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
+| **Design System** | v2.0.0 tokens (Deep Slate, Electric Indigo, Emerald), glass-morphic cards, Sora + Inter typography. |
+| **Agentic Skills** | Copilot agent skills — UI-STYLE-GUARDIAN for design enforcement, REPO-AUDITOR for codebase health. |
 | **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
 
 ## Tech Stack
@@ -101,29 +103,35 @@ See [USAGE.md](USAGE.md) for the full usage guide.
 ## Architecture Overview
 
 ```mermaid
-graph TB
-    subgraph Web["Web Layer"]
-        UI[React UI<br/>Upload → Study Flow]
-        API[FastAPI Backend<br/>Session Management]
-        CL[Content Loader<br/>PDF / MD / TXT / JSON]
+flowchart TD
+    style WebLayer fill:#1E1E2F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style AgentCore fill:#1E1E2F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    style ToolLayer fill:#1E1E2F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+
+    linkStyle default stroke:#FFFFFF,stroke-width:2px
+
+    subgraph WebLayer[Web Layer]
+        UI[React UI + Vite]
+        API[FastAPI Backend]
+        CL[Content Loader]
     end
 
-    subgraph Agent["Agent Core"]
-        SA[StudyBuddyAgent<br/>ReAct Loop]
-        DR[DecisionRules<br/>Next-Action Logic]
-        SM[StudySessionState<br/>Pydantic Models]
-        RM[RetryManager<br/>Alternative Strategies]
+    subgraph AgentCore[Agent Core]
+        SA[StudyBuddyAgent]
+        DR[DecisionRules]
+        SM[SessionState]
+        RM[RetryManager]
     end
 
-    subgraph Tools["Tool Layer"]
-        PT[Planner Tool]
-        TT[Teacher Tool]
-        QT[Quizzer Tool]
-        ET[Evaluator Tool]
-        AT[Adapter Tool]
+    subgraph ToolLayer[Tool Layer]
+        PT[Planner]
+        TT[Teacher]
+        QT[Quizzer]
+        ET[Evaluator]
+        AT[Adapter]
     end
 
-    LLM[LLM Client<br/>Groq / OpenAI]
+    LLM[LLM Client — Groq / OpenAI]
 
     UI --> API
     API --> CL
@@ -131,8 +139,14 @@ graph TB
     SA --> DR
     SA --> SM
     DR --> RM
-    SA --> PT & TT & QT & ET & AT
-    PT & TT & QT --> LLM
+    SA --> PT
+    SA --> TT
+    SA --> QT
+    SA --> ET
+    SA --> AT
+    PT --> LLM
+    TT --> LLM
+    QT --> LLM
 ```
 
 For detailed architecture, component diagrams, and data flow, see [ARCHITECTURE.md](./ARCHITECTURE.md).
@@ -150,6 +164,12 @@ webapi/
   main.py         # FastAPI backend — sessions, upload, plan, teach, quiz, evaluate
 webui/
   src/            # React frontend (Vite)
+    components/   # LandingHero, UploadStep, PlanStep, TeachStep, QuizStep, SessionControls
+    style.css     # Design tokens, animations, responsive breakpoints
+.github/
+  copilot-agents/ # Agentic skills for Copilot
+    UI-STYLE-GUARDIAN/   # Design system enforcement (SKILL.md, design-tokens.json, components-reference.md)
+    REPO-AUDITOR/        # Codebase audit & cleanup (SKILL.md, audit-checklist.md)
 scripts/          # Pytest test suite (19 test files)
 LEARNINGS/        # Step-by-step implementation notes & agentic AI concepts
 ```
