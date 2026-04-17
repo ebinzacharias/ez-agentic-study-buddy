@@ -1,8 +1,14 @@
 # EZ Agentic Study Buddy
 
+[![CI](https://github.com/ebinzacharias/ez-agentic-study-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ebinzacharias/ez-agentic-study-buddy/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-10B981.svg)](./LICENSE)
+
 An upload-first AI study assistant. Upload course materials (PDF, Markdown, text, JSON), and the system generates adaptive learning paths, teaches concepts, creates quizzes, and adjusts difficulty based on performance.
 
 Built to demonstrate practical agentic AI patterns: ReAct loops, rule-based decision making, tool orchestration, retry mechanisms, and difficulty adaptation.
+
+![Landing page](docs/landing.png)
 
 ## Features
 
@@ -175,9 +181,25 @@ Never commit `.env` or API keys. If a key is exposed in git history, rotate it i
 ## Documentation
 
 - [Usage Guide](./USAGE.md) - Configuration, usage patterns, troubleshooting
-- [Architecture](./ARCHITECTURE.md) - System design, diagrams, design patterns
+- [Architecture](./ARCHITECTURE.md) - System design, diagrams, design decisions
 - [Changelog](./CHANGELOG.md) - Version history
-- [Learning Notes](./LEARNINGS/) - Implementation journey and agentic AI concepts
+
+## Build Journal
+
+The [`LEARNINGS/`](./LEARNINGS/) folder contains a 16-step engineering journal documenting each architectural decision made while building this system — from state management design through LCEL refactoring to edge case testing.
+
+It also includes 12 concept reference notes covering agentic frameworks (CrewAI, LangGraph, AG2, BeeAI), reflection agents, and AI system design patterns studied during the [Building AI Agents and Agentic Workflows](https://coursera.org/share/e87f3ed45cbdbf2fa231d9287dd96f50) specialization on Coursera.
+
+| Step | Topic | Step | Topic |
+|------|-------|------|-------|
+| 1 | State management | 9 | Evaluator tool |
+| 2 | LLM client setup | 10 | Quiz workflow |
+| 3 | Core agent skeleton | 11 | Decision rules |
+| 4 | Planner tool | 12 | ReAct loop |
+| 5 | Manual tool calling | 13 | Adapter tool |
+| 6 | Teacher tool | 14 | Retry mechanisms |
+| 7 | State updates | 15 | LCEL refactoring |
+| 8 | Quizzer tool | 16 | Testing and edge cases |
 
 ## License
 
