@@ -140,6 +140,7 @@ flowchart TD
     subgraph AgentLayer[Agent Layer]
         direction TB
         SA[StudyBuddyAgent]
+        TE[ToolExecutor]
         DR[DecisionRules]
         RM[RetryManager]
         SM[SessionState]
@@ -147,11 +148,11 @@ flowchart TD
 
     subgraph ToolLayer[Tool Layer]
         direction TB
-        PT[Planner]
-        TT[Teacher]
-        QT[Quizzer]
-        ET[Evaluator]
-        AT[Adapter]
+        PT[Planner Tool]
+        TT[Teacher Tool]
+        QT[Quizzer Tool]
+        ET[Evaluator Tool]
+        AT[Adapter Tool]
     end
 
     subgraph InfraLayer[Infrastructure]
@@ -164,8 +165,10 @@ flowchart TD
     API ==> SA
     SA --> DR
     SA --> SM
+    DR --> SM
     DR -.-> RM
-    SA ==> ToolLayer
+    SA ==> TE
+    TE ==> ToolLayer
     PT --> LLM
     TT --> LLM
     QT --> LLM

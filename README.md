@@ -60,6 +60,7 @@ flowchart TD
     subgraph Agent[Agent Core]
         direction TB
         SA[StudyBuddyAgent]
+        TE[ToolExecutor]
         DR[DecisionRules]
         SM[SessionState]
         RM[RetryManager]
@@ -67,11 +68,11 @@ flowchart TD
 
     subgraph Tools[Tool Layer]
         direction TB
-        PT[Planner]
-        TT[Teacher]
-        QT[Quizzer]
-        ET[Evaluator]
-        AT[Adapter]
+        PT[Planner Tool]
+        TT[Teacher Tool]
+        QT[Quizzer Tool]
+        ET[Evaluator Tool]
+        AT[Adapter Tool]
     end
 
     LLM[LLM - Groq / OpenAI]
@@ -81,8 +82,10 @@ flowchart TD
     API ==> SA
     SA --> DR
     SA --> SM
+    DR --> SM
     DR -.-> RM
-    SA ==> Tools
+    SA ==> TE
+    TE ==> Tools
     PT --> LLM
     TT --> LLM
     QT --> LLM
