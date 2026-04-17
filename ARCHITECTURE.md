@@ -3,23 +3,28 @@
 ## System Overview
 
 ```mermaid
-graph TB
-    subgraph Web["Web Layer"]
-        UI[React UI<br/>Vite + Upload Flow]
-        API[FastAPI Backend<br/>Session Management]
-        CL[Content Loader<br/>PDF / MD / TXT / JSON]
+flowchart TD
+    style Web fill:#1E1E2F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style Core fill:#1E1E2F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+
+    linkStyle default stroke:#FFFFFF,stroke-width:2px
+
+    subgraph Web[Web Layer]
+        UI[React UI + Vite]
+        API[FastAPI Backend]
+        CL[Content Loader]
     end
 
-    subgraph Core["Agent Core"]
+    subgraph Core[Agent Core]
         Agent[StudyBuddyAgent]
-        ReAct[ReAct Loop<br/>observe → decide → act]
+        ReAct[ReAct Loop]
         Agent --> ReAct
     end
     
-    LLM[LLM Client<br/>Groq / OpenAI]
-    State[State Manager<br/>StudySessionState<br/>ConceptProgress]
-    ToolExec[ToolExecutor<br/>Tool Binding & Execution]
-    Tools[Tools<br/>Planner, Teacher, Quizzer, Evaluator, Adapter]
+    LLM[LLM Client — Groq / OpenAI]
+    State[State Manager]
+    ToolExec[ToolExecutor]
+    Tools[Planner / Teacher / Quizzer / Evaluator / Adapter]
     
     UI --> API
     API --> CL
@@ -29,13 +34,6 @@ graph TB
     Agent --> ToolExec
     ToolExec --> LLM
     ToolExec --> Tools
-    
-    style Web fill:#e1f5ff
-    style Core fill:#fff4e1
-    style LLM fill:#e8f5e9
-    style State fill:#f3e5f5
-    style ToolExec fill:#fff9c4
-    style Tools fill:#fce4ec
 ```
 
 ## Component Architecture
@@ -318,89 +316,69 @@ classDiagram
 
 ```mermaid
 flowchart LR
-    Start([Start Session]) --> Observe[OBSERVE<br/>Read Current State]
+    style Observe fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style Decide fill:#2D2D3F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    style Act fill:#2D2D3F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    style UpdateState fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+
+    linkStyle default stroke:#FFFFFF,stroke-width:2px
+
+    Start([Start Session]) --> Observe[OBSERVE]
     
-    Observe --> ObserveData{State Information}
-    ObserveData --> Current[Current Concept]
-    ObserveData --> Progress[Progress %]
-    ObserveData --> Taught[Concepts Taught]
-    ObserveData --> Retry[Needs Retry]
+    Observe --> Decide[DECIDE]
     
-    Current --> Decide
-    Progress --> Decide
-    Taught --> Decide
-    Retry --> Decide
+    Decide --> Plan[Plan Path]
+    Decide --> Teach[Teach Concept]
+    Decide --> Quiz[Quiz Concept]
+    Decide --> Evaluate[Evaluate Response]
+    Decide --> Adapt[Retry / Adapt]
     
-    Decide[DECIDE<br/>Choose Action<br/>Using LLM + State]
-    
-    Decide --> ActionDecision{What to do?}
-    
-    ActionDecision -->|No concepts| Plan[Plan Learning Path]
-    ActionDecision -->|Not taught| Teach[Teach Concept]
-    ActionDecision -->|Not quizzed| Quiz[Quiz Concept]
-    ActionDecision -->|Quiz taken| Evaluate[Evaluate Response]
-    ActionDecision -->|Needs retry| Adapt[Retry/Adapt]
-    
-    Plan --> Act
+    Plan --> Act[ACT]
     Teach --> Act
     Quiz --> Act
     Evaluate --> Act
     Adapt --> Act
     
-    Act[ACT<br/>Execute Action]
-    
     Act --> UpdateState[Update State]
-    UpdateState --> CheckComplete{Session<br/>Complete?}
+    UpdateState --> CheckComplete{Complete?}
     
     CheckComplete -->|No| Observe
     CheckComplete -->|Yes| End([End Session])
-    
-    style Observe fill:#e3f2fd
-    style Decide fill:#fff3e0
-    style Act fill:#e8f5e9
-    style UpdateState fill:#f3e5f5
 ```
 
 ## Tool Integration
 
 ```mermaid
-graph TD
+flowchart TD
+    style ToolLayer fill:#1E1E2F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+
+    linkStyle default stroke:#FFFFFF,stroke-width:2px
+
     Agent[StudyBuddyAgent] --> ToolExec[ToolExecutor]
     
-    ToolExec -->|Binds & Executes| Tools{Tool Selection}
+    subgraph ToolLayer[Tool Layer]
+        Planner[Planner Tool]
+        Teacher[Teacher Tool]
+        Quizzer[Quizzer Tool]
+        Evaluator[Evaluator Tool]
+        Adapter[Adapter Tool]
+    end
+
+    ToolExec --> Planner
+    ToolExec --> Teacher
+    ToolExec --> Quizzer
+    ToolExec --> Evaluator
+    ToolExec --> Adapter
     
-    Tools -->|Initial Setup| Planner[Planner Tool ✅<br/>Generate Learning Path]
-    Tools -->|Teaching Phase| Teacher[Teacher Tool ✅<br/>Teach Concepts<br/>with Retry Support]
-    Tools -->|Assessment Phase| Quizzer[Quizzer Tool ✅<br/>Create Quizzes]
-    Tools -->|Evaluation Phase| Evaluator[Evaluator Tool ✅<br/>Evaluate Responses<br/>Explicit Scoring]
-    Tools -->|Adaptation| Adapter[Adapter Tool ✅<br/>Adjust Difficulty<br/>Based on Performance]
-    
-    Planner --> State
+    Planner --> State[State Manager]
     Teacher --> State
     Quizzer --> State
     Evaluator --> State
     Adapter --> State
     
-    State[State Manager<br/>Updates Progress]
-    
-    LLM[LLM Client<br/>Powers All Tools]
-    
-    ToolExec --> LLM
-    Planner --> LLM
+    Planner --> LLM[LLM Client]
     Teacher --> LLM
     Quizzer --> LLM
-    Evaluator --> LLM
-    Adapter --> LLM
-    
-    style Agent fill:#e1f5ff
-    style ToolExec fill:#fff9c4
-    style Planner fill:#e8f5e9
-    style Teacher fill:#fff3e0
-    style Quizzer fill:#fce4ec
-    style Evaluator fill:#e0f2f1
-    style Adapter fill:#f3e5f5
-    style LLM fill:#e3f2fd
-    style State fill:#e8eaf6
 ```
 
 ## Data Flow
@@ -504,16 +482,18 @@ sequenceDiagram
 ## LCEL Chain Architecture
 
 ```mermaid
-graph LR
-    Input[Input State] --> Observe[Observe Chain<br/>RunnablePassthrough]
-    Observe -->|adds observation| Decide[Decide Chain<br/>RunnablePassthrough]
-    Decide -->|adds decision| Act[Act Chain<br/>RunnablePassthrough]
-    Act -->|adds action_result| Output[Output State<br/>observation, decision, action_result]
-    
-    style Observe fill:#e3f2fd
-    style Decide fill:#fff3e0
-    style Act fill:#e8f5e9
-    style Output fill:#f3e5f5
+flowchart LR
+    style Observe fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+    style Decide fill:#2D2D3F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF
+    style Act fill:#2D2D3F,stroke:#10B981,stroke-width:2px,color:#FFFFFF
+    style Output fill:#2D2D3F,stroke:#6366F1,stroke-width:2px,color:#FFFFFF
+
+    linkStyle default stroke:#FFFFFF,stroke-width:2px
+
+    Input[Input State] --> Observe[Observe Chain]
+    Observe --> Decide[Decide Chain]
+    Decide --> Act[Act Chain]
+    Act --> Output[Output State]
 ```
 
 **Chain Composition**:
