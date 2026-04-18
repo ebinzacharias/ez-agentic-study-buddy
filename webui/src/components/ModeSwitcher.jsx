@@ -34,23 +34,32 @@ const MODES = [
   },
 ];
 
-export default function ModeSwitcher({ activeMode, onChange }) {
+export default function ModeSwitcher({
+  activeMode,
+  onChange,
+  variant = "header",
+  idPrefix = "",
+}) {
+  const isDrawer = variant === "drawer";
+  const barClass = `mode-bar${isDrawer ? " mode-bar--drawer" : ""}`;
+
   return (
-    <div className="mode-bar" role="tablist" aria-label="Workspace mode">
+    <div className={barClass} role="tablist" aria-label="Workspace mode">
       {MODES.map(({ id, label, icon }) => {
         const isActive = activeMode === id;
+        const tabId = `mode-tab-${id}${idPrefix}`;
         return (
           <button
             key={id}
             type="button"
             role="tab"
-            id={`mode-tab-${id}`}
+            id={tabId}
             aria-selected={isActive}
             aria-controls={`panel-${id}`}
-            className={`mode-tab${isActive ? " is-active" : ""}`}
+            className={`mode-tab${isActive ? " is-active" : ""}${isDrawer ? " mode-tab--drawer" : ""}`}
             onClick={() => onChange(id)}
           >
-            {isActive && (
+            {!isDrawer && isActive && (
               <motion.span
                 className="mode-tab__track"
                 layoutId="mode-pill"
