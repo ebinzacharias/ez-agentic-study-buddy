@@ -80,10 +80,21 @@ export default function PlanStep({
                 <h4 className="concept-card__name">{c.concept_name}</h4>
               </div>
               <span className="concept-card__learn-hint" aria-hidden="true">
-                Learn
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                {completedConcepts?.has(c.concept_name) ? (
+                  <>
+                    Completed
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    Learn
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </>
+                )}
               </span>
             </li>
           ))}
