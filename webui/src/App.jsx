@@ -474,6 +474,15 @@ export default function App() {
       if (!resp.ok) failResponse(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
+      const da = data.difficulty_adaptation;
+      if (da?.adaptation_applied && da.new_difficulty) {
+        setDifficulty(da.new_difficulty);
+        try {
+          sessionStorage.setItem(SK.diff, da.new_difficulty);
+        } catch {
+          /* quota — non-critical */
+        }
+      }
     } catch (err) {
       if (err.sessionExpired) return;
       setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));

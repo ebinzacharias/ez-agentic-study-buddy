@@ -169,7 +169,7 @@ export default function QuizStep({
                 )}
               </div>
 
-              {/* Questions + Depth — side by side */}
+              {/* Questions + difficulty — side by side */}
               <div className="quiz-setup__options">
                 <div className="quiz-setup__field">
                   <label htmlFor="quiz-num-questions">
@@ -218,16 +218,16 @@ export default function QuizStep({
                 </div>
 
                 <div className="quiz-setup__field">
-                  <label htmlFor="quiz-depth">Depth</label>
+                  <label htmlFor="quiz-difficulty">Difficulty</label>
                   <select
-                    id="quiz-depth"
+                    id="quiz-difficulty"
                     value={difficulty}
                     onChange={(e) => onDifficultyChange(e.target.value)}
                     disabled={loading}
                   >
-                    <option value="beginner">Essentials</option>
-                    <option value="intermediate">In-depth</option>
-                    <option value="advanced">Expert</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
                   </select>
                 </div>
               </div>
@@ -401,6 +401,45 @@ export default function QuizStep({
               {evalResult.questions_evaluated} / {evalResult.total_questions} answered · Score:{" "}
               {evalResult.total_score} / {evalResult.total_questions}
             </p>
+            {evalResult.difficulty_adaptation &&
+            (evalResult.difficulty_adaptation.reason ||
+              evalResult.difficulty_adaptation.adaptation_applied) ? (
+              <div
+                className={`quiz-difficulty-adaptation${evalResult.difficulty_adaptation.adaptation_applied ? "" : " quiz-difficulty-adaptation--review"}`}
+                role="status"
+                aria-live="polite"
+              >
+                <div className="quiz-difficulty-adaptation__title">
+                  {evalResult.difficulty_adaptation.adaptation_applied
+                    ? "Difficulty adjusted for your performance"
+                    : "Difficulty level (no change)"}
+                </div>
+                {evalResult.difficulty_adaptation.adaptation_applied ? (
+                  <div className="quiz-difficulty-adaptation__meta">
+                    <span className="quiz-difficulty-adaptation__badge">
+                      {evalResult.difficulty_adaptation.old_difficulty}
+                    </span>
+                    <span className="quiz-difficulty-adaptation__arrow" aria-hidden="true">
+                      →
+                    </span>
+                    <span className="quiz-difficulty-adaptation__badge quiz-difficulty-adaptation__badge--new">
+                      {evalResult.difficulty_adaptation.new_difficulty}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="quiz-difficulty-adaptation__meta">
+                    <span className="quiz-difficulty-adaptation__badge quiz-difficulty-adaptation__badge--new">
+                      {evalResult.difficulty_adaptation.new_difficulty ||
+                        evalResult.difficulty_adaptation.old_difficulty}
+                    </span>
+                    <span className="quiz-difficulty-adaptation__kept">kept for next steps</span>
+                  </div>
+                )}
+                <p className="quiz-difficulty-adaptation__reason">
+                  {evalResult.difficulty_adaptation.reason}
+                </p>
+              </div>
+            ) : null}
             {evalResult.scores?.map((s) => {
               const q = quizResult?.questions?.find(
                 (qq) => qq.question_number === s.question_number
