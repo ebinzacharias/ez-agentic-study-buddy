@@ -2677,6 +2677,79 @@ p {
   flex-shrink: 0;
 }
 
+/* Quiz results — rule-based difficulty adaptation (transparent “why”) */
+.quiz-difficulty-adaptation {
+  margin: var(--space-4) 0 var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  background: var(--color-accent-dim);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.quiz-difficulty-adaptation__title {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-2);
+}
+
+.quiz-difficulty-adaptation__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.quiz-difficulty-adaptation__badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.quiz-difficulty-adaptation__badge--new {
+  background: var(--color-bg-surface);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  color: var(--color-accent-strong);
+}
+
+.quiz-difficulty-adaptation__arrow {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.quiz-difficulty-adaptation__reason {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.quiz-difficulty-adaptation--review {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+
+.quiz-difficulty-adaptation--review .quiz-difficulty-adaptation__title {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.quiz-difficulty-adaptation__kept {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 /* ── Quiz setup layout ───────────────────────────────── */
 .quiz-setup {
   display: flex;

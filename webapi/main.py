@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from agent.utils.content_loader import SUPPORTED_EXTENSIONS, load_content
 from agent.core.decision_rules import DecisionRules
 from agent.core.state import DifficultyLevel, StudySessionState
+from agent.tools.adapter_tool import adapt_difficulty
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
 from agent.tools.quizzer_tool import generate_quiz
@@ -773,9 +774,11 @@ def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
             }
         )
         # Update session state with the quiz score so DecisionRules can act on it
+        concept_name = ""
+        score = 0.0
         try:
             quiz_meta = _json.loads(req.quiz_data) if isinstance(req.quiz_data, str) else req.quiz_data
-            concept_name = quiz_meta.get("concept_name", "").strip()
+            concept_name = (quiz_meta.get("concept_name") or "").strip()
             score_pct = result.get("overall_percentage", 0)
             score = score_pct / 100.0
             if concept_name and concept_name in state.concepts:
@@ -786,7 +789,48 @@ def session_evaluate(session_id: str, req: EvaluateRequest) -> dict[str, Any]:
                 state.mark_concept_quizzed(concept_name, score)
         except Exception:
             pass
-        return {"session_id": session_id, **result, "next_action": _get_next_action(state)}
+
+        # Rule-based difficulty adaptation (no LLM) — runs after quiz scoring
+        difficulty_adaptation: dict[str, Any] | None = None
+        if concept_name and concept_name in state.concepts:
+            prog = state.get_concept_progress(concept_name)
+            current_lvl = state.overall_difficulty.value
+            retry_ct = prog.retry_count if prog else 0
+            try:
+                adapt = adapt_difficulty.invoke(
+                    {
+                        "concept_name": concept_name,
+                        "current_difficulty": current_lvl,
+                        "quiz_score": score,
+                        "retry_count": retry_ct,
+                    }
+                )
+            except Exception as adapt_exc:
+                logger.warning("adapt_difficulty after evaluate failed: %s", adapt_exc)
+                adapt = None
+
+            if isinstance(adapt, dict) and "error" not in adapt:
+                difficulty_adaptation = {
+                    "adaptation_applied": bool(adapt.get("adaptation_applied", False)),
+                    "old_difficulty": adapt.get("old_difficulty"),
+                    "new_difficulty": adapt.get("new_difficulty"),
+                    "reason": (adapt.get("reason") or "").strip(),
+                    "concept_name": adapt.get("concept_name") or concept_name,
+                }
+                if difficulty_adaptation["adaptation_applied"]:
+                    new_d = str(difficulty_adaptation["new_difficulty"] or "")
+                    state.overall_difficulty = _normalize_difficulty(new_d)
+                    if prog:
+                        prog.update_difficulty(_normalize_difficulty(new_d))
+
+        out: dict[str, Any] = {
+            "session_id": session_id,
+            **result,
+            "next_action": _get_next_action(state),
+        }
+        if difficulty_adaptation is not None:
+            out["difficulty_adaptation"] = difficulty_adaptation
+        return out
     except Exception as e:
         error_code, user_msg = _classify_error(e)
         logger.error("Evaluate endpoint error: %s", e)

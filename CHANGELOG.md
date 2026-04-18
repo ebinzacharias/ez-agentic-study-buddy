@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Mobile session navigation** (narrow viewports): hamburger control, backdrop scrim, slide-out drawer with workspace modes via `ModeSwitcher` (`variant="drawer"`), plus Source and New session; closes on Escape, scrim tap, mode change, Source modal open (`webui/src/App.jsx`, `webui/src/components/ModeSwitcher.jsx`, `webui/src/style.css`).
+- **Quiz-driven difficulty adaptation (web):** after `POST /session/{id}/evaluate`, the rule-based `adapt_difficulty` tool runs on the quiz score and retry count; when the level changes, the response includes `difficulty_adaptation` (`reason`, old/new level) and the Quiz results UI shows an explicit banner; client syncs Tune difficulty + `sessionStorage` (`webapi/main.py`, `webui/src/App.jsx`, `webui/src/components/QuizStep.jsx`, `webui/src/style.css`).
 
 ### Changed
 - **README.md** — Architecture narrative and Mermaid chart: FastAPI updates state and invokes tools per request; `StudyBuddyAgent` shown as library/tests path; dashed link from `next-action` to `DecisionRules`; expanded API table (`/ping`, `/session/{id}/source`, `/session/{id}/source-file`, `/session/{id}/upload`); CI note (Python-only; build UI locally); project structure and test-file wording; clarified DecisionRules usage in “How it works.”
