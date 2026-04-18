@@ -101,12 +101,20 @@ export default function App() {
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
+  const [quizCurrentQuestionIndex, setQuizCurrentQuestionIndex] = useState(0);
+  /** Per-question immediate check result after "Check answer" (pre-submit): true/false */
+  const [quizCheckByQuestion, setQuizCheckByQuestion] = useState({});
   const [completedConcepts, setCompletedConcepts] = useState(new Set());
 
   const [nextAction, setNextAction] = useState(null);
   const [sourceOpen, setSourceOpen] = useState(false);
 
   const resetErrors = () => setError(null);
+
+  useEffect(() => {
+    setQuizCurrentQuestionIndex(0);
+    setQuizCheckByQuestion({});
+  }, [quizResult]);
 
   // ── Hash routing — sync URL with active tab ──────────────
   const TAB_TO_HASH = { plan: "#path", teach: "#learn", quiz: "#quiz" };
@@ -502,46 +510,10 @@ export default function App() {
   const clearQuizProgress = () => {
     setQuizResult(null);
     setQuizAnswers({});
+    setQuizCheckByQuestion({});
     setEvalResult(null);
     resetErrors();
   };
-
-  let mobilePrimary = null;
-  if (sessionId && !loading) {
-    if (activeLearnTab === "plan") {
-      if (planResult?.concepts?.length) {
-        mobilePrimary = {
-          label: loading ? "Generating…" : "Go to Learn",
-          onClick: () => setActiveLearnTab("teach"),
-          disabled: loading,
-        };
-      } else {
-        mobilePrimary = {
-          label: loading ? "Generating…" : "Generate learning path",
-          onClick: () => runPlan(),
-          disabled: loading,
-        };
-      }
-    } else if (activeLearnTab === "teach") {
-      mobilePrimary = {
-        label: "Learn concept",
-        onClick: runTeach,
-        disabled: !selectedConcept.trim(),
-      };
-    } else if (!quizResult) {
-      mobilePrimary = {
-        label: "Generate quiz",
-        onClick: runQuiz,
-        disabled: !(quizConcept.trim() || selectedConcept.trim()),
-      };
-    } else {
-      mobilePrimary = {
-        label: "Submit and evaluate",
-        onClick: runEvaluate,
-        disabled: false,
-      };
-    }
-  }
 
   return (
     <div className="app-shell">
@@ -754,8 +726,15 @@ export default function App() {
                     <QuizProgressTracker
                       quizResult={quizResult}
                       quizAnswers={quizAnswers}
+                      quizCheckByQuestion={quizCheckByQuestion}
                       evalResult={evalResult}
-                      numQuestions={numQuestions}
+                      currentQuestionIndex={quizCurrentQuestionIndex}
+                      onSelectQuestion={(idx) => {
+                        setQuizCurrentQuestionIndex(idx);
+                        document
+                          .getElementById("panel-quiz")
+                          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }}
                     />
                   ) : (
                     /* Learn tab — concept-rail as jump nav while studying */
@@ -857,6 +836,8 @@ export default function App() {
                         onStartQuiz={() => {
                           if (selectedConcept) setQuizConcept(selectedConcept);
                           setQuizResult(null);
+                          setQuizAnswers({});
+                          setQuizCheckByQuestion({});
                           setEvalResult(null);
                           setActiveLearnTab("quiz");
                         }}
@@ -892,6 +873,10 @@ export default function App() {
                         onGenerateQuiz={runQuiz}
                         onEvaluate={runEvaluate}
                         onStartNewQuiz={clearQuizProgress}
+                        currentQuestionIndex={quizCurrentQuestionIndex}
+                        onCurrentQuestionIndexChange={setQuizCurrentQuestionIndex}
+                        quizCheckByQuestion={quizCheckByQuestion}
+                        onQuizCheckByQuestionChange={setQuizCheckByQuestion}
                       />
                     ) : null}
                   </div>
@@ -901,19 +886,6 @@ export default function App() {
           ) : null}
         </div>
       </main>
-
-      {sessionId && mobilePrimary ? (
-        <div className="mobile-sticky-actions" role="region" aria-label="Primary action">
-          <button
-            type="button"
-            className="mobile-sticky-actions__btn"
-            onClick={() => mobilePrimary.onClick()}
-            disabled={mobilePrimary.disabled}
-          >
-            {loading ? "Working…" : mobilePrimary.label}
-          </button>
-        </div>
-      ) : null}
 
       <footer className="site-footer">
         <p className="site-footer__primary">
