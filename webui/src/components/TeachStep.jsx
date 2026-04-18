@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+
+function estimateReadMinutesFromText(explanation) {
+  if (!explanation || typeof explanation !== "string") return null;
+  const words = explanation.trim().split(/\s+/).filter(Boolean).length;
+  if (!words) return 1;
+  return Math.min(45, Math.max(1, Math.round(words / 200)));
+}
 
 export default function TeachStep({
   selectedConcept,
@@ -32,6 +39,20 @@ export default function TeachStep({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [lessonMaximized]);
+
+  const readMinutes = useMemo(() => {
+    if (!teachResult) return null;
+    const n = teachResult.estimated_read_minutes;
+    if (typeof n === "number" && Number.isFinite(n) && n > 0) {
+      return Math.min(45, Math.max(1, Math.round(n)));
+    }
+    return estimateReadMinutesFromText(teachResult.explanation);
+  }, [teachResult]);
+
+  const takeaways = useMemo(() => {
+    if (!teachResult?.takeaways || !Array.isArray(teachResult.takeaways)) return [];
+    return teachResult.takeaways.map((t) => (typeof t === "string" ? t.trim() : "")).filter(Boolean);
+  }, [teachResult]);
 
   if (!selectedConcept) {
     return (
@@ -99,6 +120,34 @@ export default function TeachStep({
               )}
             </button>
           </div>
+
+          {readMinutes != null ? (
+            <p className="lesson-card__read-time">
+              <span className="lesson-card__read-time-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 7v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>
+              About {readMinutes} min read
+            </p>
+          ) : null}
+
+          {takeaways.length > 0 ? (
+            <aside className="lesson-takeaways" aria-labelledby="takeaways-heading">
+              <h3 id="takeaways-heading" className="lesson-takeaways__title">
+                Key takeaways
+              </h3>
+              <ul className="lesson-takeaways__list">
+                {takeaways.map((t, idx) => (
+                  <li key={`${idx}-${t.slice(0, 24)}`} className="lesson-takeaways__item">
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          ) : null}
+
           <article className="teach-explanation" aria-label="Lesson explanation">
             <ReactMarkdown
               components={{

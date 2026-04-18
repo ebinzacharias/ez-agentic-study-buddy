@@ -3385,6 +3385,67 @@ button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn)
   flex-shrink: 1;
 }
 
+.lesson-card__read-time {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.lesson-card__read-time-icon {
+  display: inline-flex;
+  color: var(--color-accent);
+  opacity: 0.9;
+}
+
+.lesson-takeaways {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-teal) 35%, var(--color-border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-teal) 8%, var(--color-bg-surface)) 0%,
+    var(--color-bg-surface) 100%
+  );
+  flex-shrink: 0;
+}
+
+.lesson-takeaways__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-teal);
+}
+
+.lesson-takeaways__list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.lesson-takeaways__item {
+  margin: 0;
+  padding-left: var(--space-1);
+}
+
+.lesson-takeaways__item::marker {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .lesson-card__max-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -3452,6 +3513,10 @@ button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn)
 
 .result.result--teach.learn-environment__notes-card.learn-environment__notes-card--maximized
   .lesson-card__header,
+.result.result--teach.learn-environment__notes-card.learn-environment__notes-card--maximized
+  .lesson-card__read-time,
+.result.result--teach.learn-environment__notes-card.learn-environment__notes-card--maximized
+  .lesson-takeaways,
 .result.result--teach.learn-environment__notes-card.learn-environment__notes-card--maximized
   .teach-explanation,
 .result.result--teach.learn-environment__notes-card.learn-environment__notes-card--maximized

@@ -17,7 +17,7 @@ from agent.core.state import DifficultyLevel, StudySessionState
 from agent.tools.evaluator_tool import evaluate_response
 from agent.tools.planner_tool import plan_learning_path
 from agent.tools.quizzer_tool import generate_quiz
-from agent.tools.teacher_tool import teach_concept
+from agent.tools.teacher_tool import teach_concept_payload
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("webapi")
@@ -672,30 +672,32 @@ def session_teach(session_id: str, req: TeachRequest) -> dict[str, Any]:
     state.overall_difficulty = _normalize_difficulty(difficulty)
 
     try:
-        explanation = teach_concept.invoke(
-            {
-                "concept_name": concept,
-                "difficulty_level": difficulty,
-                "context": req.context,
-                "source_material": state.get_content_context(max_chars=3000),
-            }
+        payload = teach_concept_payload(
+            concept_name=concept,
+            difficulty_level=difficulty,
+            context=req.context or "",
+            source_material=state.get_content_context(max_chars=3000),
         )
         state.add_concept(concept)
         state.mark_concept_taught(concept)
         state.current_concept = concept  # anchor state so next_action resolves correctly
-        # Check if tool returned an error string (prefixed with [error:...])
-        if isinstance(explanation, str) and explanation.startswith("[error:"):
-            code = explanation.split("]")[0].replace("[error:", "")
-            msg = explanation.split("] ", 1)[-1]
-            return JSONResponse(
-                status_code=503,
-                content={"error": msg, "error_code": code},
-            )
+        if payload.get("error"):
+            err = str(payload["error"])
+            if err.startswith("[error:"):
+                code = err.split("]")[0].replace("[error:", "")
+                msg = err.split("] ", 1)[-1]
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": msg, "error_code": code},
+                )
+            return JSONResponse(status_code=503, content={"error": err, "error_code": "unknown"})
         return {
             "session_id": state.session_id,
             "concept_name": concept,
             "difficulty_level": difficulty,
-            "explanation": explanation,
+            "explanation": payload["explanation"],
+            "takeaways": payload.get("takeaways") or [],
+            "estimated_read_minutes": int(payload.get("estimated_read_minutes") or 1),
             "next_action": _get_next_action(state),
         }
     except Exception as e:
