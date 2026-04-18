@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export default function QuizStep({
   topic,
   quizConcept,
   selectedConcept,
   numQuestions,
+  difficulty,
   quizResult,
   quizAnswers,
   evalResult,
@@ -12,10 +13,15 @@ export default function QuizStep({
   loading,
   onQuizConceptChange,
   onNumQuestionsChange,
+  onDifficultyChange,
   onAnswerChange,
   onGenerateQuiz,
   onEvaluate,
   onStartNewQuiz,
+  currentQuestionIndex,
+  onCurrentQuestionIndexChange,
+  quizCheckByQuestion = {},
+  onQuizCheckByQuestionChange,
 }) {
   const phase =
     evalResult != null ? "results" : quizResult != null ? "active" : "setup";
@@ -27,35 +33,102 @@ export default function QuizStep({
     onNumQuestionsChange(next);
   };
 
-  // One-at-a-time state
-  const [currentQIdx, setCurrentQIdx] = useState(0);
-  // checked[questionNumber] = true (correct) | false (incorrect)
-  const [checked, setChecked] = useState({});
+  const [questionCountDraft, setQuestionCountDraft] = useState(null);
 
   useEffect(() => {
-    setCurrentQIdx(0);
-    setChecked({});
-  }, [quizResult]);
+    setQuestionCountDraft(null);
+  }, [numQuestions]);
+
+  const questionCountDisplay =
+    questionCountDraft !== null ? questionCountDraft : String(numQuestions);
+
+  const commitQuestionCount = () => {
+    const raw = questionCountDraft !== null ? questionCountDraft : String(numQuestions);
+    const v = parseInt(raw, 10);
+    const clamped = Math.min(
+      MAX_Q,
+      Math.max(MIN_Q, Number.isFinite(v) ? v : numQuestions)
+    );
+    onNumQuestionsChange(clamped);
+    setQuestionCountDraft(null);
+  };
+
+  const currentQIdx = currentQuestionIndex ?? 0;
+  const checked = quizCheckByQuestion;
+  const [stepAnnouncement, setStepAnnouncement] = useState("");
+  const nextBtnRef = useRef(null);
+
+  const setCurrentQIdx = onCurrentQuestionIndexChange ?? (() => {});
 
   const questions = quizResult?.questions ?? [];
-  const currentQ = questions[currentQIdx];
+  const safeIdx = Math.min(Math.max(0, currentQIdx), Math.max(0, questions.length - 1));
+  const currentQ = questions.length ? questions[safeIdx] : undefined;
+
+  useEffect(() => {
+    if (!onCurrentQuestionIndexChange || questions.length === 0) return;
+    if (currentQIdx !== safeIdx) {
+      onCurrentQuestionIndexChange(safeIdx);
+    }
+  }, [
+    questions.length,
+    currentQIdx,
+    safeIdx,
+    onCurrentQuestionIndexChange,
+  ]);
   const isChecked = currentQ ? checked[currentQ.question_number] !== undefined : false;
   const isCorrectAnswer = currentQ ? checked[currentQ.question_number] === true : false;
   const hasAnswer = currentQ ? !!quizAnswers[currentQ.question_number] : false;
-  const isLastQ = currentQIdx === questions.length - 1;
+  const isLastQ = questions.length > 0 && safeIdx === questions.length - 1;
+
+  const headingId = currentQ ? `quiz-active-heading-${currentQ.question_number}` : "";
+  const promptId = currentQ ? `quiz-active-prompt-${currentQ.question_number}` : "";
+  const radiogroupLabelledBy =
+    headingId && promptId ? `${headingId} ${promptId}` : undefined;
+
+  useEffect(() => {
+    if (phase !== "active" || questions.length === 0) {
+      setStepAnnouncement("");
+      return;
+    }
+    setStepAnnouncement(`Question ${safeIdx + 1} of ${questions.length}`);
+  }, [phase, safeIdx, questions.length]);
+
+  // After "Check answer", move focus to the primary action (Next / See results).
+  useEffect(() => {
+    if (phase !== "active" || !currentQ || !isChecked) return;
+    const id = window.requestAnimationFrame(() => {
+      nextBtnRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [phase, currentQ?.question_number, isChecked]);
+
+  // After advancing to another question, move focus to the first choice.
+  useEffect(() => {
+    if (phase !== "active" || !currentQ) return;
+    const id = window.requestAnimationFrame(() => {
+      const first = document.querySelector(
+        `input[type="radio"][name="q${currentQ.question_number}"]`
+      );
+      first?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [phase, safeIdx, currentQ?.question_number]);
 
   const handleCheck = () => {
-    if (!currentQ || !hasAnswer) return;
+    if (!currentQ || !hasAnswer || !onQuizCheckByQuestionChange) return;
     const userAnswer = quizAnswers[currentQ.question_number];
     const correct = userAnswer === currentQ.correct_answer;
-    setChecked((prev) => ({ ...prev, [currentQ.question_number]: correct }));
+    onQuizCheckByQuestionChange((prev) => ({
+      ...prev,
+      [currentQ.question_number]: correct,
+    }));
   };
 
   const handleNext = () => {
     if (isLastQ) {
       onEvaluate();
     } else {
-      setCurrentQIdx((i) => i + 1);
+      setCurrentQIdx(safeIdx + 1);
     }
   };
 
@@ -67,8 +140,10 @@ export default function QuizStep({
         {phase === "setup" && (
           <div className="card card--stage quiz-environment__setup">
             <h3 className="quiz-environment__heading">Quiz</h3>
-            <div className="row">
-              <div className="field">
+
+            <div className="quiz-setup">
+              {/* Concept — full width */}
+              <div className="quiz-setup__concept">
                 <label htmlFor="quiz-concept">Concept</label>
                 {planResult ? (
                   <select
@@ -94,38 +169,80 @@ export default function QuizStep({
                 )}
               </div>
 
-              <div className="field">
-                <label>Questions</label>
-                <div className="plan-stepper" aria-label={`${numQuestions} questions`}>
-                  <button
-                    type="button"
-                    className="plan-stepper__btn"
-                    aria-label="Fewer questions"
-                    disabled={loading || numQuestions <= MIN_Q}
-                    onClick={() => stepQ(-1)}
-                  >−</button>
-                  <span className="plan-stepper__count">{numQuestions}</span>
-                  <button
-                    type="button"
-                    className="plan-stepper__btn"
-                    aria-label="More questions"
-                    disabled={loading || numQuestions >= MAX_Q}
-                    onClick={() => stepQ(+1)}
-                  >+</button>
+              {/* Questions + difficulty — side by side */}
+              <div className="quiz-setup__options">
+                <div className="quiz-setup__field">
+                  <label htmlFor="quiz-num-questions">
+                    Questions
+                    <span className="sr-only">
+                      {" "}
+                      ({MIN_Q}–{MAX_Q})
+                    </span>
+                  </label>
+                  <div className="quiz-q-stepper">
+                    <button
+                      type="button"
+                      className="quiz-q-stepper__btn"
+                      aria-label="Fewer questions"
+                      disabled={loading || numQuestions <= MIN_Q}
+                      onClick={() => stepQ(-1)}
+                    >
+                      −
+                    </button>
+                    <input
+                      id="quiz-num-questions"
+                      className="quiz-q-stepper__value"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      disabled={loading}
+                      value={questionCountDisplay}
+                      onChange={(e) =>
+                        setQuestionCountDraft(e.target.value.replace(/[^\d]/g, ""))
+                      }
+                      onBlur={commitQuestionCount}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="quiz-q-stepper__btn"
+                      aria-label="More questions"
+                      disabled={loading || numQuestions >= MAX_Q}
+                      onClick={() => stepQ(+1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="quiz-setup__field">
+                  <label htmlFor="quiz-difficulty">Difficulty</label>
+                  <select
+                    id="quiz-difficulty"
+                    value={difficulty}
+                    onChange={(e) => onDifficultyChange(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="field actions field--primary-action">
-                <label className="label-placeholder">&nbsp;</label>
-                <button
-                  type="button"
-                  onClick={onGenerateQuiz}
-                  disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
-                >
-                  {loading ? "Generating…" : "Generate quiz"}
-                </button>
-              </div>
+              {/* Generate button — full width */}
+              <button
+                type="button"
+                className="quiz-setup__generate"
+                onClick={onGenerateQuiz}
+                disabled={!(quizConcept.trim() || selectedConcept.trim()) || loading}
+              >
+                {loading ? "Generating…" : "Generate quiz"}
+              </button>
             </div>
+
             <div className="hint">
               Questions are grounded in your uploaded material.
             </div>
@@ -135,30 +252,41 @@ export default function QuizStep({
         {/* ── Active phase — one question at a time ── */}
         {phase === "active" && currentQ && (
           <div className="quiz-one">
-            {/* Progress bar */}
-            <div className="quiz-one__progress">
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+              {stepAnnouncement}
+            </div>
+
+            {/* Progress bar — dots + counter are visual only; step is announced via live region */}
+            <div className="quiz-one__progress" aria-hidden="true">
               <div className="quiz-one__progress-dots">
                 {questions.map((q, i) => (
                   <span
                     key={q.question_number}
-                    className={`quiz-one__dot${i === currentQIdx ? " quiz-one__dot--active" : ""}${checked[q.question_number] !== undefined ? (checked[q.question_number] ? " quiz-one__dot--correct" : " quiz-one__dot--wrong") : ""}`}
+                    className={`quiz-one__dot${i === safeIdx ? " quiz-one__dot--active" : ""}${checked[q.question_number] !== undefined ? (checked[q.question_number] ? " quiz-one__dot--correct" : " quiz-one__dot--wrong") : ""}`}
+                    aria-hidden="true"
                   />
                 ))}
               </div>
               <span className="quiz-one__counter">
-                {currentQIdx + 1} / {questions.length}
+                {safeIdx + 1} / {questions.length}
               </span>
             </div>
 
             {/* Question card */}
             <div className="quiz-question-card quiz-question-card--single">
-              <p className="quiz-question-card__num">
-                Question {currentQIdx + 1}
+              <h2 id={headingId} className="quiz-question-card__num">
+                Question {safeIdx + 1} of {questions.length}
+              </h2>
+              <p id={promptId} className="quiz-question-card__prompt">
+                {currentQ.question}
               </p>
-              <p className="quiz-question-card__prompt">{currentQ.question}</p>
 
               {currentQ.options && (
-                <div className="quiz-options" role="radiogroup" aria-label={`Question ${currentQ.question_number}`}>
+                <div
+                  className="quiz-options"
+                  role="radiogroup"
+                  aria-labelledby={radiogroupLabelledBy}
+                >
                   {currentQ.options.map((opt, i) => {
                     const isSelected = quizAnswers[currentQ.question_number] === opt;
                     const isCorrectOpt = opt === currentQ.correct_answer;
@@ -195,7 +323,11 @@ export default function QuizStep({
 
               {/* Immediate feedback after checking */}
               {isChecked && (
-                <div className={`quiz-feedback${isCorrectAnswer ? " quiz-feedback--correct" : " quiz-feedback--wrong"}`}>
+                <div
+                  className={`quiz-feedback${isCorrectAnswer ? " quiz-feedback--correct" : " quiz-feedback--wrong"}`}
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   <p className="quiz-feedback__verdict">
                     {isCorrectAnswer ? "Correct!" : `Incorrect — correct answer: ${currentQ.correct_answer}`}
                   </p>
@@ -226,6 +358,7 @@ export default function QuizStep({
                   </button>
                 ) : (
                   <button
+                    ref={nextBtnRef}
                     type="button"
                     className="quiz-one__next"
                     onClick={handleNext}
@@ -268,6 +401,45 @@ export default function QuizStep({
               {evalResult.questions_evaluated} / {evalResult.total_questions} answered · Score:{" "}
               {evalResult.total_score} / {evalResult.total_questions}
             </p>
+            {evalResult.difficulty_adaptation &&
+            (evalResult.difficulty_adaptation.reason ||
+              evalResult.difficulty_adaptation.adaptation_applied) ? (
+              <div
+                className={`quiz-difficulty-adaptation${evalResult.difficulty_adaptation.adaptation_applied ? "" : " quiz-difficulty-adaptation--review"}`}
+                role="status"
+                aria-live="polite"
+              >
+                <div className="quiz-difficulty-adaptation__title">
+                  {evalResult.difficulty_adaptation.adaptation_applied
+                    ? "Difficulty adjusted for your performance"
+                    : "Difficulty level (no change)"}
+                </div>
+                {evalResult.difficulty_adaptation.adaptation_applied ? (
+                  <div className="quiz-difficulty-adaptation__meta">
+                    <span className="quiz-difficulty-adaptation__badge">
+                      {evalResult.difficulty_adaptation.old_difficulty}
+                    </span>
+                    <span className="quiz-difficulty-adaptation__arrow" aria-hidden="true">
+                      →
+                    </span>
+                    <span className="quiz-difficulty-adaptation__badge quiz-difficulty-adaptation__badge--new">
+                      {evalResult.difficulty_adaptation.new_difficulty}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="quiz-difficulty-adaptation__meta">
+                    <span className="quiz-difficulty-adaptation__badge quiz-difficulty-adaptation__badge--new">
+                      {evalResult.difficulty_adaptation.new_difficulty ||
+                        evalResult.difficulty_adaptation.old_difficulty}
+                    </span>
+                    <span className="quiz-difficulty-adaptation__kept">kept for next steps</span>
+                  </div>
+                )}
+                <p className="quiz-difficulty-adaptation__reason">
+                  {evalResult.difficulty_adaptation.reason}
+                </p>
+              </div>
+            ) : null}
             {evalResult.scores?.map((s) => {
               const q = quizResult?.questions?.find(
                 (qq) => qq.question_number === s.question_number

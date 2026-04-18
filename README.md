@@ -1,121 +1,75 @@
 # EZ Agentic Study Buddy
 
-**An Upload-First AI Study Assistant with Adaptive Learning**
+[![CI](https://github.com/ebinzacharias/ez-agentic-study-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ebinzacharias/ez-agentic-study-buddy/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-10B981.svg)](./LICENSE)
 
-**Started:** January 2026
+An upload-first AI study assistant. Upload course materials (PDF, Markdown, text, JSON), and the system generates adaptive learning paths, teaches concepts, creates quizzes, and adjusts difficulty based on performance.
 
----
+Built to demonstrate practical agentic AI patterns: ReAct loops, rule-based decision making, tool orchestration, retry mechanisms, and difficulty adaptation.
 
-## What Is This?
-
-EZ Agentic Study Buddy lets you **upload your own course materials** (PDF, Markdown, plain text, JSON) and immediately get an **AI-powered study session** — adaptive learning paths, concept explanations, multiple-choice quizzes, and feedback — all grounded in *your* content.
-
-It showcases practical **agentic AI patterns**: a ReAct loop, rule-based decision making, tool orchestration, retry mechanisms, and difficulty adaptation.
+![Landing page](docs/landing.png)
 
 ## Features
 
-| Category | Details |
-|----------|---------|
-| **Upload-First UX** | Drop a file, get a session. Topic is auto-suggested from content. |
-| **Adaptive Learning Paths** | Planner tool breaks material into ordered concepts at the right difficulty. |
-| **Concept Teaching** | Teacher tool generates grounded explanations with retry support. |
-| **Multiple-Choice Quizzes** | Quizzer tool creates MC questions sourced from uploaded content. |
-| **Evaluation & Feedback** | Evaluator tool scores answers with explicit rule-based logic (not LLM judgment). |
-| **Difficulty Adaptation** | Adapter tool adjusts difficulty up/down based on quiz performance. |
-| **Session State Tracking** | Pydantic-based state tracks progress, scores, retries, and next actions. |
-| **Next-Action Guidance** | DecisionRules engine recommends what to do next after each step. |
-| **Content Loading** | Parses `.txt`, `.md`, `.json`, and `.pdf` (PyMuPDF is a normal dependency). |
-| **Web UI** | React frontend + FastAPI backend for the full upload → plan → teach → quiz → evaluate flow. |
-| **CI Pipeline** | GitHub Actions with ruff linting, mypy type checking, and pytest. |
+- Upload a file, get a study session. Topic is auto-suggested from content.
+- Planner breaks material into ordered concepts at the appropriate difficulty.
+- Teacher generates explanations grounded in uploaded content, with retry support.
+- Quizzer creates multiple-choice questions sourced from the material.
+- Evaluator scores answers using rule-based logic (not LLM judgment).
+- Adapter adjusts difficulty up or down based on quiz performance.
+- DecisionRules engine determines the next action after each step.
+- Pydantic-based state tracks progress, scores, retries, and session flow.
+- Parses `.txt`, `.md`, `.json`, and `.pdf` (via PyMuPDF).
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | Backend | Python 3.11+, FastAPI, Pydantic |
 | Agent Core | LangChain, LCEL chains, ReAct pattern |
-| LLM | Groq (default, free) or OpenAI (pluggable) |
-| Frontend | React + Vite |
+| LLM | Groq (default) or OpenAI |
+| Frontend | React, Vite |
 | Package Manager | uv |
-| CI | GitHub Actions — ruff, mypy, pytest |
+| CI | GitHub Actions (ruff, mypy, pytest; Python only — run `npm run build` locally for the UI) |
 
-## Quick Start
+## How It Works
 
-### Prerequisites
+1. User uploads a file through the React frontend.
+2. FastAPI backend parses the file and creates a session with an auto-suggested topic.
+3. Planner tool generates an ordered learning path from the content.
+4. Teacher tool explains each concept at the current difficulty level.
+5. Quizzer tool generates multiple-choice questions for the concept.
+6. Evaluator tool scores answers using explicit keyword matching.
+7. Adapter tool adjusts difficulty based on quiz performance and retry count.
+8. DecisionRules determines the next step (notably for `/next-action` and the library agent loop). The user-driven loop continues until concepts are mastered.
 
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) package manager
-- Node.js 18+ (for the web UI)
-- Groq API key — free at [console.groq.com](https://console.groq.com)
+## Architecture
 
-### Install & Verify
-
-The repo includes a committed **`uv.lock`** so installs are reproducible. Use `--locked` to ensure your environment matches that file (CI does this).
-
-```bash
-# Clone & install (includes FastAPI backend)
-git clone https://github.com/ebinzacharias/ez-agentic-study-buddy.git
-cd ez-agentic-study-buddy
-uv sync --extra web --locked
-
-# Configure environment
-cp .env.example .env
-# Edit .env → add your GROQ_API_KEY (never commit .env — see Security below)
-
-# Run offline tests to verify
-uv run python -m pytest scripts/test_decision_rules.py -q
-```
-
-### Run the Web App
-
-**Backend (FastAPI):**
-
-```bash
-python -m uvicorn webapi.main:app --reload --port 8000
-```
-
-**Frontend (React):**
-
-```bash
-cd webui
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173), upload a file, and start studying.
-
-### Programmatic Usage
-
-```python
-from agent.core.agent import StudyBuddyAgent
-
-agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
-result = agent.run()
-
-print(f"Concepts taught: {result['concepts_taught']}")
-print(f"Progress: {result['progress_percentage']:.1f}%")
-```
-
-See [USAGE.md](USAGE.md) for the full usage guide.
-
-## Architecture Overview
+The **web app** drives work through **FastAPI**: each request updates `StudySessionState` and invokes the relevant **tools** (or helpers like `teach_concept_payload`) directly. **`StudyBuddyAgent`** packages the same state, **DecisionRules**, and **ToolExecutor** into a **ReAct-style LCEL loop** for **library / programmatic** use and tests (it is not invoked on every HTTP call).
 
 ```mermaid
-graph TB
-    subgraph Web["Web Layer"]
-        UI[React UI<br/>Upload → Study Flow]
-        API[FastAPI Backend<br/>Session Management]
-        CL[Content Loader<br/>PDF / MD / TXT / JSON]
+flowchart TD
+    classDef layer fill:#EEF2FF,stroke:#6366F1,stroke-width:2px,color:#1E293B,font-weight:bold
+
+    subgraph Web[Web Layer]
+        direction TB
+        UI[React + Vite]
+        API[FastAPI]
+        CL[Content Loader]
     end
 
-    subgraph Agent["Agent Core"]
-        SA[StudyBuddyAgent<br/>ReAct Loop]
-        DR[DecisionRules<br/>Next-Action Logic]
-        SM[StudySessionState<br/>Pydantic Models]
-        RM[RetryManager<br/>Alternative Strategies]
+    subgraph Agent[Agent Core]
+        direction TB
+        SA[StudyBuddyAgent<br/>library + tests]
+        TE[ToolExecutor]
+        DR[DecisionRules]
+        SM[StudySessionState]
+        RM[RetryManager]
     end
 
-    subgraph Tools["Tool Layer"]
+    subgraph Tools[Tool Layer]
+        direction TB
         PT[Planner Tool]
         TT[Teacher Tool]
         QT[Quizzer Tool]
@@ -123,78 +77,141 @@ graph TB
         AT[Adapter Tool]
     end
 
-    LLM[LLM Client<br/>Groq / OpenAI]
+    LLM[LLM - Groq / OpenAI]
 
-    UI --> API
+    UI ==> API
     API --> CL
-    API --> SA
+    API --> SM
+    API --> Tools
+    API -.->|next-action| DR
     SA --> DR
     SA --> SM
-    DR --> RM
-    SA --> PT & TT & QT & ET & AT
-    PT & TT & QT --> LLM
+    DR --> SM
+    DR -.-> RM
+    SA ==> TE
+    TE ==> Tools
+    PT --> LLM
+    TT --> LLM
+    QT --> LLM
+
+    class Web,Agent,Tools layer
 ```
 
-For detailed architecture, component diagrams, and data flow, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for component details, class diagrams, and data flow.
 
 ## Project Structure
 
 ```
 agent/
-  core/           # Agent, state, decision rules, retry manager, quiz workflow, tool executor
-  chains/         # LCEL chain composition (observe → decide → act)
-  tools/          # Planner, Teacher, Quizzer, Evaluator, Adapter
-  agents/         # Agent classes (Planner, Teacher, Quizzer, Adapter)
-  utils/          # LLM client, content loader
+  core/       State, decision rules, retry manager, quiz workflow, tool executor
+  chains/     LCEL chain composition (observe, decide, act)
+  tools/      Planner, Teacher, Quizzer, Evaluator, Adapter
+  utils/      LLM client, content loader
 webapi/
-  main.py         # FastAPI backend — sessions, upload, plan, teach, quiz, evaluate
+  main.py     FastAPI backend - sessions, upload, plan, teach, quiz, evaluate
 webui/
-  src/            # React frontend (Vite)
-scripts/          # Pytest test suite (19 test files)
-LEARNINGS/        # Step-by-step implementation notes & agentic AI concepts
+  src/        React frontend (Vite)
+    components/   UploadStep, PlanStep, TeachStep, QuizStep, ModeSwitcher,
+                  SessionControls, QuizProgressTracker, MaterialPreview, SourcePreviewModal
+scripts/      pytest tests (20+ files under scripts/)
+LEARNINGS/    Implementation notes and agentic AI concepts
 ```
 
 ## API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/upload` | Upload & parse a single file |
-| `POST` | `/session/from-upload` | Upload file(s) → create session with auto-suggested topic |
-| `POST` | `/session` | Create a session from already-uploaded content |
+| `POST` | `/upload` | Upload and parse a file |
+| `POST` | `/session/from-upload` | Upload file, create session with auto-suggested topic |
+| `POST` | `/session` | Create session from previously uploaded content |
 | `GET`  | `/session/{id}` | Get session state |
-| `POST` | `/session/{id}/upload` | Upload additional file to existing session |
 | `POST` | `/session/{id}/plan` | Generate learning path |
 | `POST` | `/session/{id}/teach` | Teach a concept |
 | `POST` | `/session/{id}/quiz` | Generate a quiz |
 | `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
 | `GET`  | `/session/{id}/next-action` | Get recommended next step |
+| `GET`  | `/ping` | Liveness probe |
+| `GET`  | `/session/{id}/source` | Source material metadata (e.g. PDF preview) |
+| `GET`  | `/session/{id}/source-file` | Original uploaded file bytes (PDF preview) |
+| `POST` | `/session/{id}/upload` | Add or replace material for an existing session |
 
-## Security
+## Getting Started
 
-- **Never commit `.env`** or paste real **Groq**, **OpenAI**, or other API keys into the repo, issues, or screenshots. Only use `.env.example` (placeholders) in version control.
-- If a key was ever exposed in git history or a public fork, **rotate it immediately** in the provider console and treat it as compromised.
+Requirements: Python 3.11+, [uv](https://github.com/astral-sh/uv), Node.js 18+, Groq API key ([console.groq.com](https://console.groq.com)).
+
+```bash
+git clone https://github.com/ebinzacharias/ez-agentic-study-buddy.git
+cd ez-agentic-study-buddy
+uv sync --extra web --locked
+
+cp .env.example .env
+# Add your GROQ_API_KEY to .env
+
+# Verify
+uv run python -m pytest scripts/test_decision_rules.py -q
+```
+
+Run the app:
+
+```bash
+# Backend
+python -m uvicorn webapi.main:app --reload --port 8000
+
+# Frontend
+cd webui && npm install && npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+Programmatic usage:
+
+```python
+from agent.core.agent import StudyBuddyAgent
+
+agent = StudyBuddyAgent(topic="Python Basics", max_iterations=50)
+result = agent.run()
+print(f"Progress: {result['progress_percentage']:.1f}%")
+```
 
 ## Testing
 
 ```bash
-# Full test suite (requires GROQ_API_KEY for LLM tests)
+# Full suite (requires GROQ_API_KEY)
 uv run python -m pytest -q
 
-# Offline-only tests (no API key needed)
+# Offline only
 uv run python -m pytest scripts/test_decision_rules.py scripts/test_quizzer_schema_validation.py -q
 ```
 
-Tests that require `GROQ_API_KEY` skip automatically in CI.
+Tests requiring `GROQ_API_KEY` skip automatically in CI.
+
+## Security
+
+Never commit `.env` or API keys. If a key is exposed in git history, rotate it immediately.
 
 ## Documentation
 
-- [Usage Guide](./USAGE.md) — Detailed usage, configuration, and troubleshooting
-- [Architecture](./ARCHITECTURE.md) — System design, diagrams, and design patterns
-- [Changelog](./CHANGELOG.md) — Version history
-- [Learning Notes](./LEARNINGS/) — Step-by-step implementation journey & agentic AI concepts
+- [Usage Guide](./USAGE.md) - Configuration, usage patterns, troubleshooting
+- [Architecture](./ARCHITECTURE.md) - System design, diagrams, design decisions
+- [Changelog](./CHANGELOG.md) - Version history
+
+## Build Journal
+
+The [`LEARNINGS/`](./LEARNINGS/) folder contains a 16-step engineering journal documenting each architectural decision made while building this system — from state management design through LCEL refactoring to edge case testing.
+
+It also includes 12 concept reference notes covering agentic frameworks (CrewAI, LangGraph, AG2, BeeAI), reflection agents, and AI system design patterns studied during the [Building AI Agents and Agentic Workflows](https://coursera.org/share/e87f3ed45cbdbf2fa231d9287dd96f50) specialization on Coursera.
+
+| Step | Topic | Step | Topic |
+|------|-------|------|-------|
+| 1 | State management | 9 | Evaluator tool |
+| 2 | LLM client setup | 10 | Quiz workflow |
+| 3 | Core agent skeleton | 11 | Decision rules |
+| 4 | Planner tool | 12 | ReAct loop |
+| 5 | Manual tool calling | 13 | Adapter tool |
+| 6 | Teacher tool | 14 | Retry mechanisms |
+| 7 | State updates | 15 | LCEL refactoring |
+| 8 | Quizzer tool | 16 | Testing and edge cases |
 
 ## License
 
-This project is released under the [MIT License](./LICENSE). You may use, modify, and redistribute the code under those terms. If you publish a fork or portfolio copy, linking back or crediting this repository is appreciated but not required. Ideas, bug reports, and pull requests are welcome when maintainers have time to review them.
-
-For notices on adapted third-party material (not the license for the whole repo), see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+[MIT License](./LICENSE). See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for adapted third-party material.

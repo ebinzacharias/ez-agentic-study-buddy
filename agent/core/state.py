@@ -148,5 +148,6 @@ class StudySessionState(BaseModel):
         raw = self.loaded_content.get("raw_text", "")
         if len(raw) <= max_chars:
             return raw
-        return raw[:max_chars] + "\n\n[... content truncated ...]"
+        suffix = "\n\n[... content truncated ...]"
+        return raw[: max_chars - len(suffix)] + suffix
 

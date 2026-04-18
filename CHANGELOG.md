@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-18
+
+First public **product sketch** release: upload-first web UI, FastAPI session API, LangChain tools, and docs aligned with the HTTP vs library agent paths.
+
+### Added
+- **Mobile session navigation** (narrow viewports): hamburger control, backdrop scrim, slide-out drawer with workspace modes via `ModeSwitcher` (`variant="drawer"`), plus Source and New session; closes on Escape, scrim tap, mode change, Source modal open (`webui/src/App.jsx`, `webui/src/components/ModeSwitcher.jsx`, `webui/src/style.css`).
+- **Quiz-driven difficulty adaptation (web):** after `POST /session/{id}/evaluate`, the rule-based `adapt_difficulty` tool runs on the quiz score and retry count; when the level changes, the response includes `difficulty_adaptation` (`reason`, old/new level) and the Quiz results UI shows an explicit banner; client syncs Tune difficulty + `sessionStorage` (`webapi/main.py`, `webui/src/App.jsx`, `webui/src/components/QuizStep.jsx`, `webui/src/style.css`).
+- **Agentic Skills** (`.github/copilot-agents/`)
+  - `UI-STYLE-GUARDIAN/` — design system enforcement (SKILL.md, design-tokens.json v2.0.0, components-reference.md)
+  - `REPO-AUDITOR/` — codebase audit and cleanup (SKILL.md, audit-checklist.md)
+
+### Changed
+- **README.md** — Architecture narrative and Mermaid chart: FastAPI updates state and invokes tools per request; `StudyBuddyAgent` shown as library/tests path; dashed link from `next-action` to `DecisionRules`; expanded API table (`/ping`, `/session/{id}/source`, `/session/{id}/source-file`, `/session/{id}/upload`); CI note (Python-only; build UI locally); project structure and test-file wording; clarified DecisionRules usage in “How it works.”
+- **ARCHITECTURE.md** — Overview documents **HTTP path** (handlers call tools/helpers directly) vs **`StudyBuddyAgent`** LCEL loop; sequence diagram matches real upload/plan/next-action flow; layer diagram aligned; ReAct section distinguishes browser-driven steps from `step()`/`run()`.
+- **CHANGELOG.md** — Release notes consolidated for `v0.1.0`; `pyproject.toml` version set to **0.1.0** to match this tag and `webui/package.json`.
+
+### Removed
+- `agent/agents/` directory — `adapter_agent.py`, `planner_agent.py`, `quizzer_agent.py`, `teacher_agent.py` (legacy agent classes superseded by tool-based architecture in `agent/tools/`)
+- `agent/core/orchestrator.py` — legacy orchestration pattern replaced by `StudyBuddyAgent` + `ToolExecutor`
+- `webui/src/components/LandingHero.jsx` — not imported in App.jsx
+- `webui/src/components/NextActionBanner.jsx` — not imported in App.jsx
+- `DESIGN_SYSTEM.md` — redundant with `.github/copilot-agents/UI-STYLE-GUARDIAN/` files
+
+---
+
+## Previous Changes
+
 ### Changed
 - **Reproducible Python env**: `uv.lock` is committed; `.gitignore` no longer excludes it. Use `uv sync --locked` (CI uses `uv sync --extra web --group dev --locked`).
 - **Dev dependencies**: `[dependency-groups].dev` pins **ruff 0.11.7** (matches pre-commit **v0.11.7**), plus mypy and pytest; CI no longer installs tools with unversioned `uv pip install`.
@@ -31,16 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON key-value and nested structure parsing
   - File validation, word count, and summary context helpers
 - **React Frontend** (`webui/`)
-  - Vite-based React app for the upload → plan → teach → quiz → evaluate flow
-- **Agent classes** (`agent/agents/`)
-  - `PlannerAgent`, `TeacherAgent`, `QuizzerAgent`, `AdapterAgent`
+  - Vite-based React app for the upload, plan, teach, quiz, evaluate flow
 - **Quiz schema enforcement** — multiple-choice only, grounded in uploaded content
 - **Test suite expansion**
   - `test_agent_workflow_interactions.py` — API workflow interaction tests
   - `test_topic_suggestion.py` — topic auto-suggestion regression tests
   - `test_quizzer_schema_validation.py` — quiz schema validation tests
   - `test_content_loader.py` — content loader tests
-  - Total: 19 test files under `scripts/`
+  - 22 `test_*.py` files under `scripts/`
 - **CI pipeline** (`.github/workflows/ci.yml`)
   - GitHub Actions: ruff lint, mypy type check, pytest
   - Uses `uv sync --extra web --group dev --locked` for dependencies and pinned tooling
@@ -49,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Topic suggestion temp-name bug — broadened `_TEMP_STEM_RE` regex to match all temp file patterns
-- mypy duplicate module discovery — added `webapi/__init__.py` package marker
+- mypy duplicate module discovery involving `webapi` — resolved via package/import layout (see `pyproject.toml` / repo roots)
 - mypy type errors on optional `UploadFile.filename` — normalized with `file.filename or "uploaded_file"`
 - Pytest `PytestReturnNotNoneWarning` in 8+ test files — replaced `return True/False` with `pytest.fail()`
 - Ruff E402 import-order errors after `pytest.importorskip()` guards — added `# noqa: E402`
@@ -159,13 +184,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.env.example` template
   - `ARCHITECTURE.md` with comprehensive diagrams
   - `CHANGELOG.md` for version tracking
-
-## [0.1.0] - 2026-01-XX
-
-### Added
-- Initial project setup
-- Basic project structure
-- Repository initialization
 
 [Unreleased]: https://github.com/ebinzacharias/ez-agentic-study-buddy/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ebinzacharias/ez-agentic-study-buddy/releases/tag/v0.1.0

@@ -56,12 +56,12 @@ You are building a learning path STRICTLY from the uploaded material above.
 
 Step 1 — Identify every distinct concept present in the material.
 Step 2 — Rank them by importance to understanding the material (most central ideas first).
-Step 3 — Select the TOP {max_concepts} most important concepts.
+Step 3 — Select the most important concepts. Use as many as the material naturally supports, up to {max_concepts} maximum. If the material covers only one idea, return one concept. Do not pad or split artificially.
 Step 4 — Re-order the selected concepts into a logical learning sequence (prerequisites first).
 
 Rules:
 - Every concept MUST come directly from the uploaded material. Do NOT invent or add outside knowledge.
-- If the material contains fewer than {max_concepts} distinct concepts, return only what is there.
+- Return only as many concepts as the material genuinely contains. Do NOT force {max_concepts} concepts.
 - Concept names must be concise (2–6 words) and reflect the actual content of the material.
 - Overall difficulty level: {difficulty_level}
 """
