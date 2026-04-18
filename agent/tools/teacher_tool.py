@@ -1,7 +1,8 @@
+import importlib
 import json
 import re
-from json.decoder import JSONDecoder, py_scanstring
-from typing import Any, Optional
+from json.decoder import JSONDecoder
+from typing import Any, Optional, cast
 
 from langchain_core.tools import tool
 
@@ -46,6 +47,8 @@ def _normalize_takeaways(raw: Any) -> list[str]:
 
 
 _json_decoder = JSONDecoder()
+# CPython exposes py_scanstring on json.decoder; typeshed omits it (mypy attr-defined).
+_json_py_scanstring: Any = getattr(importlib.import_module("json.decoder"), "py_scanstring")
 
 
 def _repair_triple_quoted_explanation(text: str) -> str | None:
@@ -96,7 +99,7 @@ def _loose_parse_explanation_and_takeaways(text: str) -> dict[str, Any] | None:
         return None
     try:
         # py_scanstring expects the index of the opening " of the JSON string value
-        expl, _end = py_scanstring(text, m.end() - 1, strict=False)
+        expl, _end = cast(tuple[str, int], _json_py_scanstring(text, m.end() - 1, False))
     except (json.JSONDecodeError, ValueError):
         return None
 
