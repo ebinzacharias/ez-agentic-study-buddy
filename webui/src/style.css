@@ -95,6 +95,9 @@
   --layout-outer-max: 1200px;
   --layout-inner-max: 850px;
 
+  /* Sticky header stack (nav + top rule) — used to size session workspace below fold */
+  --chrome-sticky-h: 58px;
+
   /* Sticky chrome offsets (session view: compact header + mode switcher; see .app-shell:has) */
   --header-h: 168px;
   --mode-bar-h: 92px;
@@ -882,14 +885,80 @@ p {
   .app-grid--with-session.app-grid--mode-learn {
     display: grid;
     grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    grid-template-rows: 1fr;
     gap: 28px;
-    align-items: start;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   /* Ensure both columns share the same block-start edge */
   .app-grid--with-session.app-grid--mode-learn > aside,
   .app-grid--with-session.app-grid--mode-learn > section {
     margin-top: 0;
+  }
+
+  /* Learn: lock workspace to viewport — scroll inside rail + lesson, not the whole page */
+  .app-main:has(.app-grid--with-session.app-grid--mode-learn) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: calc(100dvh - var(--chrome-sticky-h));
+    max-height: calc(100dvh - var(--chrome-sticky-h));
+    overflow-y: hidden;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn > .session-rail {
+    position: relative;
+    top: auto;
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn .concept-rail.card--rail {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn .main-stage--learn {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn .main-stage--learn .stage-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn .main-stage--learn .stage-panel:not([hidden]) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn .main-stage--learn .learn-environment {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-grid--with-session.app-grid--mode-learn
+    .result.result--teach.learn-environment__notes-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
   }
 
   .app-grid--with-session.app-grid--mode-quiz {
@@ -2498,7 +2567,11 @@ p {
 }
 
 .learn-environment__notes-card .teach-explanation {
-  max-height: min(65vh, 720px);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Quiz progress rail */
@@ -2852,6 +2925,7 @@ button.btn-plan-path:hover:not(:disabled) {
   font-weight: 600;
   margin: 0 0 var(--space-3);
   color: var(--color-text-primary);
+  flex-shrink: 0;
 }
 
 .concept-rail__list {
@@ -2969,6 +3043,7 @@ button.btn-plan-path:hover:not(:disabled) {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   line-height: 1.45;
+  flex-shrink: 0;
 }
 
 /* Rail collapsible preview — tucked accordion */
@@ -3263,6 +3338,34 @@ button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn)
 /* Learn step — lesson as readable markdown (not monospaced pre) */
 .result--teach {
   padding-bottom: var(--space-6);
+}
+
+/* Lesson card: stay within the viewport; scroll markdown inside */
+.result.result--teach.learn-environment__notes-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(86dvh, calc(100dvh - var(--header-h) - var(--space-7)));
+}
+
+@media (max-width: 1023px) {
+  .result.result--teach.learn-environment__notes-card {
+    max-height: min(
+      76dvh,
+      calc(
+        100dvh - var(--header-h) - var(--mobile-bar-h) - var(--space-6) -
+          env(safe-area-inset-bottom, 0)
+      )
+    );
+  }
+}
+
+.result.result--teach.learn-environment__notes-card .result__title {
+  flex-shrink: 0;
+}
+
+.result.result--teach.learn-environment__notes-card .lesson-footer {
+  flex-shrink: 0;
 }
 
 .teach-explanation {
