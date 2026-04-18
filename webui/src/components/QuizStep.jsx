@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export default function QuizStep({
   topic,
@@ -29,10 +29,32 @@ export default function QuizStep({
     onNumQuestionsChange(next);
   };
 
+  const [questionCountDraft, setQuestionCountDraft] = useState(null);
+
+  useEffect(() => {
+    setQuestionCountDraft(null);
+  }, [numQuestions]);
+
+  const questionCountDisplay =
+    questionCountDraft !== null ? questionCountDraft : String(numQuestions);
+
+  const commitQuestionCount = () => {
+    const raw = questionCountDraft !== null ? questionCountDraft : String(numQuestions);
+    const v = parseInt(raw, 10);
+    const clamped = Math.min(
+      MAX_Q,
+      Math.max(MIN_Q, Number.isFinite(v) ? v : numQuestions)
+    );
+    onNumQuestionsChange(clamped);
+    setQuestionCountDraft(null);
+  };
+
   // One-at-a-time state
   const [currentQIdx, setCurrentQIdx] = useState(0);
   // checked[questionNumber] = true (correct) | false (incorrect)
   const [checked, setChecked] = useState({});
+  const [stepAnnouncement, setStepAnnouncement] = useState("");
+  const nextBtnRef = useRef(null);
 
   useEffect(() => {
     setCurrentQIdx(0);
@@ -45,6 +67,40 @@ export default function QuizStep({
   const isCorrectAnswer = currentQ ? checked[currentQ.question_number] === true : false;
   const hasAnswer = currentQ ? !!quizAnswers[currentQ.question_number] : false;
   const isLastQ = currentQIdx === questions.length - 1;
+
+  const headingId = currentQ ? `quiz-active-heading-${currentQ.question_number}` : "";
+  const promptId = currentQ ? `quiz-active-prompt-${currentQ.question_number}` : "";
+  const radiogroupLabelledBy =
+    headingId && promptId ? `${headingId} ${promptId}` : undefined;
+
+  useEffect(() => {
+    if (phase !== "active" || questions.length === 0) {
+      setStepAnnouncement("");
+      return;
+    }
+    setStepAnnouncement(`Question ${currentQIdx + 1} of ${questions.length}`);
+  }, [phase, currentQIdx, questions.length]);
+
+  // After "Check answer", move focus to the primary action (Next / See results).
+  useEffect(() => {
+    if (phase !== "active" || !currentQ || !isChecked) return;
+    const id = window.requestAnimationFrame(() => {
+      nextBtnRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [phase, currentQ?.question_number, isChecked]);
+
+  // After advancing to another question, move focus to the first choice.
+  useEffect(() => {
+    if (phase !== "active" || !currentQ) return;
+    const id = window.requestAnimationFrame(() => {
+      const first = document.querySelector(
+        `input[type="radio"][name="q${currentQ.question_number}"]`
+      );
+      first?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [phase, currentQIdx, currentQ?.question_number]);
 
   const handleCheck = () => {
     if (!currentQ || !hasAnswer) return;
@@ -101,23 +157,48 @@ export default function QuizStep({
               {/* Questions + Depth — side by side */}
               <div className="quiz-setup__options">
                 <div className="quiz-setup__field">
-                  <label>Questions</label>
-                  <div className="plan-stepper" aria-label={`${numQuestions} questions`}>
+                  <label htmlFor="quiz-num-questions">
+                    Questions
+                    <span className="sr-only">
+                      {" "}
+                      ({MIN_Q}–{MAX_Q})
+                    </span>
+                  </label>
+                  <div className="quiz-q-stepper">
                     <button
                       type="button"
-                      className="plan-stepper__btn"
+                      className="quiz-q-stepper__btn"
                       aria-label="Fewer questions"
                       disabled={loading || numQuestions <= MIN_Q}
                       onClick={() => stepQ(-1)}
-                    >−</button>
-                    <span className="plan-stepper__count">{numQuestions}</span>
+                    >
+                      −
+                    </button>
+                    <input
+                      id="quiz-num-questions"
+                      className="quiz-q-stepper__value"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      disabled={loading}
+                      value={questionCountDisplay}
+                      onChange={(e) =>
+                        setQuestionCountDraft(e.target.value.replace(/[^\d]/g, ""))
+                      }
+                      onBlur={commitQuestionCount}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                    />
                     <button
                       type="button"
-                      className="plan-stepper__btn"
+                      className="quiz-q-stepper__btn"
                       aria-label="More questions"
                       disabled={loading || numQuestions >= MAX_Q}
                       onClick={() => stepQ(+1)}
-                    >+</button>
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -156,13 +237,18 @@ export default function QuizStep({
         {/* ── Active phase — one question at a time ── */}
         {phase === "active" && currentQ && (
           <div className="quiz-one">
-            {/* Progress bar */}
-            <div className="quiz-one__progress">
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+              {stepAnnouncement}
+            </div>
+
+            {/* Progress bar — dots + counter are visual only; step is announced via live region */}
+            <div className="quiz-one__progress" aria-hidden="true">
               <div className="quiz-one__progress-dots">
                 {questions.map((q, i) => (
                   <span
                     key={q.question_number}
                     className={`quiz-one__dot${i === currentQIdx ? " quiz-one__dot--active" : ""}${checked[q.question_number] !== undefined ? (checked[q.question_number] ? " quiz-one__dot--correct" : " quiz-one__dot--wrong") : ""}`}
+                    aria-hidden="true"
                   />
                 ))}
               </div>
@@ -173,13 +259,19 @@ export default function QuizStep({
 
             {/* Question card */}
             <div className="quiz-question-card quiz-question-card--single">
-              <p className="quiz-question-card__num">
-                Question {currentQIdx + 1}
+              <h2 id={headingId} className="quiz-question-card__num">
+                Question {currentQIdx + 1} of {questions.length}
+              </h2>
+              <p id={promptId} className="quiz-question-card__prompt">
+                {currentQ.question}
               </p>
-              <p className="quiz-question-card__prompt">{currentQ.question}</p>
 
               {currentQ.options && (
-                <div className="quiz-options" role="radiogroup" aria-label={`Question ${currentQ.question_number}`}>
+                <div
+                  className="quiz-options"
+                  role="radiogroup"
+                  aria-labelledby={radiogroupLabelledBy}
+                >
                   {currentQ.options.map((opt, i) => {
                     const isSelected = quizAnswers[currentQ.question_number] === opt;
                     const isCorrectOpt = opt === currentQ.correct_answer;
@@ -216,7 +308,11 @@ export default function QuizStep({
 
               {/* Immediate feedback after checking */}
               {isChecked && (
-                <div className={`quiz-feedback${isCorrectAnswer ? " quiz-feedback--correct" : " quiz-feedback--wrong"}`}>
+                <div
+                  className={`quiz-feedback${isCorrectAnswer ? " quiz-feedback--correct" : " quiz-feedback--wrong"}`}
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   <p className="quiz-feedback__verdict">
                     {isCorrectAnswer ? "Correct!" : `Incorrect — correct answer: ${currentQ.correct_answer}`}
                   </p>
@@ -247,6 +343,7 @@ export default function QuizStep({
                   </button>
                 ) : (
                   <button
+                    ref={nextBtnRef}
                     type="button"
                     className="quiz-one__next"
                     onClick={handleNext}

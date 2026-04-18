@@ -1920,6 +1920,36 @@ p {
   user-select: none;
 }
 
+.plan-stepper__count-input {
+  user-select: text;
+  width: 2.25rem;
+  max-width: 3rem;
+  margin: 0;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+
+.plan-stepper__count-input::-webkit-outer-spin-button,
+.plan-stepper__count-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.plan-stepper__count-input:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.plan-stepper__count-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .plan-stepper__cap {
   font-size: 12px;
   color: var(--color-text-muted);
@@ -2396,6 +2426,86 @@ p {
 .quiz-setup__field:last-child {
   flex: 1;
   min-width: 120px;
+}
+
+/* Question count — segmented control (matches setup inputs, not teal pill) */
+.quiz-q-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  overflow: hidden;
+  min-height: 44px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.quiz-q-stepper__btn {
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.quiz-q-stepper__btn:hover:not(:disabled) {
+  background: var(--color-bg-input);
+  color: var(--color-accent);
+}
+
+.quiz-q-stepper__btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+  z-index: 1;
+}
+
+.quiz-q-stepper__btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+input.quiz-q-stepper__value {
+  width: 3rem;
+  min-width: 2.75rem;
+  max-width: 4rem;
+  margin: 0;
+  padding: 6px 4px;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-radius: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-display);
+  background: var(--color-bg-input);
+  box-shadow: none;
+}
+
+input.quiz-q-stepper__value:focus-visible {
+  outline: none;
+  border-color: var(--color-border);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+  z-index: 1;
+  position: relative;
+}
+
+input.quiz-q-stepper__value:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .quiz-setup__generate {
@@ -3256,7 +3366,7 @@ select {
 /* Buttons — .btn-shadcn reserved for Tailwind / shadcn primitives */
 button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn):not(
     .lesson-card__max-btn
-  ) {
+  ):not(.quiz-q-stepper__btn) {
   font-family: var(--font-body);
   font-size: var(--text-body);
   font-weight: 600;
@@ -3271,7 +3381,7 @@ button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
     .source-preview-dialog__close
   ):not(.btn-session-ghost):not(.btn-session-copy):not(.btn-plan-path):not(
     .brand__home-btn
-  ):not(.lesson-card__max-btn) {
+  ):not(.lesson-card__max-btn):not(.quiz-q-stepper__btn) {
   background: var(--color-primary);
   color: var(--color-on-primary);
   box-shadow: var(--shadow-button);
@@ -3282,7 +3392,7 @@ button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
     .source-preview-dialog__close
   ):not(.btn-session-ghost):not(.btn-session-copy):not(.btn-plan-path):not(
     .brand__home-btn
-  ):not(.lesson-card__max-btn):hover:not(:disabled) {
+  ):not(.lesson-card__max-btn):not(.quiz-q-stepper__btn):hover:not(:disabled) {
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--color-primary) 88%, #6366F1);
   box-shadow: var(--shadow-lift);
@@ -3290,7 +3400,7 @@ button:not(.btn-secondary):not(.concept-rail__btn):not(.btn-shadcn):not(
 
 button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn):not(
     .lesson-card__max-btn
-  ):disabled {
+  ):not(.quiz-q-stepper__btn):disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none !important;
@@ -3298,7 +3408,7 @@ button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn)
 
 button:not(.btn-shadcn):not(.source-preview-dialog__close):not(.brand__home-btn):not(
     .lesson-card__max-btn
-  ):focus-visible {
+  ):not(.quiz-q-stepper__btn):focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.40);
 }
