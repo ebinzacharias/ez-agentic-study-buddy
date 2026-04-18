@@ -1,8 +1,22 @@
+import random
 from typing import Any, Dict
 
 from langchain_core.tools import tool
 
 from agent.utils.llm_client import call_with_retry, get_llm_client
+
+
+def _shuffle_mc_options(question: dict[str, Any]) -> None:
+    """
+    Randomize option order after validation. LLMs often put the correct answer first
+    because of example bias; shuffling preserves correct_answer text matching.
+    """
+    opts = question.get("options")
+    if not isinstance(opts, list) or len(opts) < 2:
+        return
+    shuffled = list(opts)
+    random.shuffle(shuffled)
+    question["options"] = shuffled
 
 
 @tool
@@ -74,6 +88,7 @@ Requirements:
 - Every question MUST be multiple_choice
 - For every multiple choice question, provide exactly 4 options as full text strings (NOT letters like A/B/C/D)
 - The correct_answer field MUST be the FULL option text (e.g. "Generating Human-Like Text"), NOT a letter
+- Vary which option is correct: do NOT put the right answer in the same slot every time (avoid always making the first option correct)
 - Include brief explanation for each answer
 
 Return the quiz in this EXACT JSON format:
@@ -85,16 +100,16 @@ Return the quiz in this EXACT JSON format:
             "question_number": 1,
             "question_type": "multiple_choice",
             "question": "Question text here?",
-            "options": ["Full text of option 1", "Full text of option 2", "Full text of option 3", "Full text of option 4"],
-            "correct_answer": "Full text of option 1",
+            "options": ["Distractor A", "Distractor B", "Correct option text", "Distractor D"],
+            "correct_answer": "Correct option text",
             "explanation": "Brief explanation here"
         }},
         {{
             "question_number": 2,
             "question_type": "multiple_choice",
             "question": "Question text here?",
-            "options": ["Full text of option 1", "Full text of option 2", "Full text of option 3", "Full text of option 4"],
-            "correct_answer": "Full text of option 2",
+            "options": ["Correct option text", "Distractor B", "Distractor C", "Distractor D"],
+            "correct_answer": "Correct option text",
             "explanation": "Brief explanation here"
         }}
     ],
@@ -128,16 +143,16 @@ Return ONLY valid JSON, no additional text before or after."""
             if not isinstance(correct_answer, str) or correct_answer.strip() not in normalized_options:
                 continue
 
-            valid_questions.append(
-                {
-                    "question_number": len(valid_questions) + 1,
-                    "question_type": "multiple_choice",
-                    "question": str(question.get("question", "")).strip(),
-                    "options": normalized_options,
-                    "correct_answer": correct_answer.strip(),
-                    "explanation": str(question.get("explanation", "")).strip(),
-                }
-            )
+            q_out = {
+                "question_number": len(valid_questions) + 1,
+                "question_type": "multiple_choice",
+                "question": str(question.get("question", "")).strip(),
+                "options": normalized_options,
+                "correct_answer": correct_answer.strip(),
+                "explanation": str(question.get("explanation", "")).strip(),
+            }
+            _shuffle_mc_options(q_out)
+            valid_questions.append(q_out)
 
         return valid_questions
 
