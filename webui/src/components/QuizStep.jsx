@@ -18,6 +18,10 @@ export default function QuizStep({
   onGenerateQuiz,
   onEvaluate,
   onStartNewQuiz,
+  currentQuestionIndex,
+  onCurrentQuestionIndexChange,
+  quizCheckByQuestion = {},
+  onQuizCheckByQuestionChange,
 }) {
   const phase =
     evalResult != null ? "results" : quizResult != null ? "active" : "setup";
@@ -49,24 +53,32 @@ export default function QuizStep({
     setQuestionCountDraft(null);
   };
 
-  // One-at-a-time state
-  const [currentQIdx, setCurrentQIdx] = useState(0);
-  // checked[questionNumber] = true (correct) | false (incorrect)
-  const [checked, setChecked] = useState({});
+  const currentQIdx = currentQuestionIndex ?? 0;
+  const checked = quizCheckByQuestion;
   const [stepAnnouncement, setStepAnnouncement] = useState("");
   const nextBtnRef = useRef(null);
 
-  useEffect(() => {
-    setCurrentQIdx(0);
-    setChecked({});
-  }, [quizResult]);
+  const setCurrentQIdx = onCurrentQuestionIndexChange ?? (() => {});
 
   const questions = quizResult?.questions ?? [];
-  const currentQ = questions[currentQIdx];
+  const safeIdx = Math.min(Math.max(0, currentQIdx), Math.max(0, questions.length - 1));
+  const currentQ = questions.length ? questions[safeIdx] : undefined;
+
+  useEffect(() => {
+    if (!onCurrentQuestionIndexChange || questions.length === 0) return;
+    if (currentQIdx !== safeIdx) {
+      onCurrentQuestionIndexChange(safeIdx);
+    }
+  }, [
+    questions.length,
+    currentQIdx,
+    safeIdx,
+    onCurrentQuestionIndexChange,
+  ]);
   const isChecked = currentQ ? checked[currentQ.question_number] !== undefined : false;
   const isCorrectAnswer = currentQ ? checked[currentQ.question_number] === true : false;
   const hasAnswer = currentQ ? !!quizAnswers[currentQ.question_number] : false;
-  const isLastQ = currentQIdx === questions.length - 1;
+  const isLastQ = questions.length > 0 && safeIdx === questions.length - 1;
 
   const headingId = currentQ ? `quiz-active-heading-${currentQ.question_number}` : "";
   const promptId = currentQ ? `quiz-active-prompt-${currentQ.question_number}` : "";
@@ -78,8 +90,8 @@ export default function QuizStep({
       setStepAnnouncement("");
       return;
     }
-    setStepAnnouncement(`Question ${currentQIdx + 1} of ${questions.length}`);
-  }, [phase, currentQIdx, questions.length]);
+    setStepAnnouncement(`Question ${safeIdx + 1} of ${questions.length}`);
+  }, [phase, safeIdx, questions.length]);
 
   // After "Check answer", move focus to the primary action (Next / See results).
   useEffect(() => {
@@ -100,20 +112,23 @@ export default function QuizStep({
       first?.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [phase, currentQIdx, currentQ?.question_number]);
+  }, [phase, safeIdx, currentQ?.question_number]);
 
   const handleCheck = () => {
-    if (!currentQ || !hasAnswer) return;
+    if (!currentQ || !hasAnswer || !onQuizCheckByQuestionChange) return;
     const userAnswer = quizAnswers[currentQ.question_number];
     const correct = userAnswer === currentQ.correct_answer;
-    setChecked((prev) => ({ ...prev, [currentQ.question_number]: correct }));
+    onQuizCheckByQuestionChange((prev) => ({
+      ...prev,
+      [currentQ.question_number]: correct,
+    }));
   };
 
   const handleNext = () => {
     if (isLastQ) {
       onEvaluate();
     } else {
-      setCurrentQIdx((i) => i + 1);
+      setCurrentQIdx(safeIdx + 1);
     }
   };
 
@@ -247,20 +262,20 @@ export default function QuizStep({
                 {questions.map((q, i) => (
                   <span
                     key={q.question_number}
-                    className={`quiz-one__dot${i === currentQIdx ? " quiz-one__dot--active" : ""}${checked[q.question_number] !== undefined ? (checked[q.question_number] ? " quiz-one__dot--correct" : " quiz-one__dot--wrong") : ""}`}
+                    className={`quiz-one__dot${i === safeIdx ? " quiz-one__dot--active" : ""}${checked[q.question_number] !== undefined ? (checked[q.question_number] ? " quiz-one__dot--correct" : " quiz-one__dot--wrong") : ""}`}
                     aria-hidden="true"
                   />
                 ))}
               </div>
               <span className="quiz-one__counter">
-                {currentQIdx + 1} / {questions.length}
+                {safeIdx + 1} / {questions.length}
               </span>
             </div>
 
             {/* Question card */}
             <div className="quiz-question-card quiz-question-card--single">
               <h2 id={headingId} className="quiz-question-card__num">
-                Question {currentQIdx + 1} of {questions.length}
+                Question {safeIdx + 1} of {questions.length}
               </h2>
               <p id={promptId} className="quiz-question-card__prompt">
                 {currentQ.question}
