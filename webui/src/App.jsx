@@ -108,6 +108,7 @@ export default function App() {
 
   const [nextAction, setNextAction] = useState(null);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const resetErrors = () => setError(null);
 
@@ -115,6 +116,30 @@ export default function App() {
     setQuizCurrentQuestionIndex(0);
     setQuizCheckByQuestion({});
   }, [quizResult]);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
+
+  useEffect(() => {
+    closeMobileNav();
+  }, [activeLearnTab, sessionId]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeMobileNav();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (sourceOpen) setMobileNavOpen(false);
+  }, [sourceOpen]);
 
   // ── Hash routing — sync URL with active tab ──────────────
   const TAB_TO_HASH = { plan: "#path", teach: "#learn", quiz: "#quiz" };
@@ -525,14 +550,16 @@ export default function App() {
         {/* ── Single unified nav bar ─────────────────────────── */}
         <header className="site-header">
           <div className="site-header__inner">
-
             {/* Brand */}
             <div className="site-header__brand">
               <h1 className="brand__title">
                 <button
                   type="button"
                   className="brand__home-btn"
-                  onClick={resetSession}
+                  onClick={() => {
+                    closeMobileNav();
+                    resetSession();
+                  }}
                   aria-label="EZ Study Lab — go to landing page"
                   title="Go to landing page"
                 >
@@ -542,44 +569,136 @@ export default function App() {
               </h1>
             </div>
 
-            {/* Mode tabs — inline, only when session active */}
+            {/* Desktop: mode tabs + session actions */}
             {sessionId ? (
-              <ModeSwitcher
-                activeMode={activeLearnTab}
-                onChange={handleModeChange}
-              />
-            ) : null}
-
-            {/* Session actions */}
-            {sessionId ? (
-              <div className="site-header__actions">
-                <button
-                  type="button"
-                  className="session-btn session-btn--ghost"
-                  onClick={() => setSourceOpen(true)}
-                  disabled={loading}
-                >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                    <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Source
-                </button>
-                <button
-                  type="button"
-                  className="session-btn session-btn--reset"
-                  onClick={resetSession}
-                  disabled={loading}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                  New session
-                </button>
+              <div className="site-header__session-desktop">
+                <ModeSwitcher
+                  activeMode={activeLearnTab}
+                  onChange={handleModeChange}
+                />
+                <div className="site-header__actions">
+                  <button
+                    type="button"
+                    className="session-btn session-btn--ghost"
+                    onClick={() => setSourceOpen(true)}
+                    disabled={loading}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Source
+                  </button>
+                  <button
+                    type="button"
+                    className="session-btn session-btn--reset"
+                    onClick={() => {
+                      closeMobileNav();
+                      resetSession();
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                    New session
+                  </button>
+                </div>
               </div>
             ) : null}
 
+            {/* Mobile: menu toggle */}
+            {sessionId ? (
+              <button
+                type="button"
+                className="site-header__menu-toggle site-header__ui"
+                aria-expanded={mobileNavOpen}
+                aria-controls="mobile-session-nav"
+                aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+                onClick={() => setMobileNavOpen((o) => !o)}
+              >
+                <span className="site-header__menu-bars" aria-hidden="true">
+                  <span className="site-header__menu-bar" />
+                  <span className="site-header__menu-bar" />
+                  <span className="site-header__menu-bar" />
+                </span>
+              </button>
+            ) : null}
           </div>
+
+          {/* Mobile drawer + scrim */}
+          {sessionId && mobileNavOpen ? (
+            <>
+              <button
+                type="button"
+                className="site-header__scrim site-header__ui"
+                aria-label="Close menu"
+                tabIndex={-1}
+                onClick={closeMobileNav}
+              />
+              <div
+                id="mobile-session-nav"
+                className="site-header__drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Session menu"
+              >
+                <div className="site-header__drawer-head">
+                  <span className="site-header__drawer-title">Workspace</span>
+                  <button
+                    type="button"
+                    className="site-header__drawer-close site-header__ui"
+                    aria-label="Close menu"
+                    onClick={closeMobileNav}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+                <ModeSwitcher
+                  variant="drawer"
+                  idPrefix="-mnav"
+                  activeMode={activeLearnTab}
+                  onChange={(mode) => {
+                    closeMobileNav();
+                    handleModeChange(mode);
+                  }}
+                />
+                <div className="site-header__drawer-actions">
+                  <button
+                    type="button"
+                    className="site-header__drawer-action site-header__ui"
+                    onClick={() => {
+                      closeMobileNav();
+                      setSourceOpen(true);
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Source material
+                  </button>
+                  <button
+                    type="button"
+                    className="site-header__drawer-action site-header__drawer-action--danger site-header__ui"
+                    onClick={() => {
+                      closeMobileNav();
+                      resetSession();
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                    New session
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </header>
 
 
