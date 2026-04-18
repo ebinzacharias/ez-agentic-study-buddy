@@ -32,7 +32,15 @@ def test_teach_returns_next_action_generate_quiz(monkeypatch) -> None:
     webmain.SESSIONS.clear()
     sid = _seed_session("teach-next-action")
 
-    monkeypatch.setattr(webmain, "teach_concept", SimpleNamespace(invoke=lambda payload: "Teaching content"))
+    monkeypatch.setattr(
+        webmain,
+        "teach_concept_payload",
+        lambda **kwargs: {
+            "explanation": "Teaching content",
+            "takeaways": ["Takeaway one", "Takeaway two"],
+            "estimated_read_minutes": 2,
+        },
+    )
 
     client = _client()
     resp = client.post(
@@ -47,6 +55,9 @@ def test_teach_returns_next_action_generate_quiz(monkeypatch) -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert data["concept_name"] == "Agent Basics"
+    assert data["explanation"] == "Teaching content"
+    assert data["takeaways"] == ["Takeaway one", "Takeaway two"]
+    assert data["estimated_read_minutes"] == 2
     assert "next_action" in data
     assert data["next_action"]["action"] == "generate_quiz"
 
