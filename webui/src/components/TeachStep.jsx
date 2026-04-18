@@ -57,14 +57,21 @@ export default function TeachStep({
                 type="button"
                 className={`lesson-footer__complete-btn ${completed ? "lesson-footer__complete-btn--done" : ""}`}
                 onClick={onMarkComplete}
-                disabled={loading || completed}
+                disabled={loading}
+                aria-pressed={completed}
+                aria-label={
+                  completed
+                    ? "Mark this concept as incomplete"
+                    : "Mark this concept as complete"
+                }
+                title={completed ? "Undo if you marked this by mistake" : undefined}
               >
                 {completed ? (
                   <>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Completed
+                    Mark incomplete
                   </>
                 ) : (
                   "Mark as complete"

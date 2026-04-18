@@ -128,7 +128,7 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Session persistence — survive page refresh ───────────
-  const SK = { id: "ez_sid", topic: "ez_topic", diff: "ez_diff" };
+  const SK = { id: "ez_sid", topic: "ez_topic", diff: "ez_diff", completed: "ez_completed" };
 
   // On mount: attempt to restore session from sessionStorage
   useEffect(() => {
@@ -149,6 +149,20 @@ export default function App() {
         setSessionId(storedId);
         setTopic(data.topic || storedTopic || "");
         if (storedDiff) setDifficulty(storedDiff);
+
+        try {
+          const raw = sessionStorage.getItem(SK.completed);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.sid === storedId && Array.isArray(parsed.items)) {
+              setCompletedConcepts(new Set(parsed.items));
+            } else {
+              sessionStorage.removeItem(SK.completed);
+            }
+          }
+        } catch {
+          sessionStorage.removeItem(SK.completed);
+        }
 
         // Auto-regenerate learning path (plan is not stored client-side)
         const resolvedTopic = data.topic || storedTopic || "";
@@ -177,6 +191,19 @@ export default function App() {
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Persist completed concepts per-session so refresh doesn't lose them
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      sessionStorage.setItem(
+        SK.completed,
+        JSON.stringify({ sid: sessionId, items: Array.from(completedConcepts) }),
+      );
+    } catch {
+      /* storage quota — non-critical */
+    }
+  }, [sessionId, completedConcepts]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const failResponse = (data) => {
     if (isSessionExpired(data)) {
       resetSession();
@@ -192,6 +219,7 @@ export default function App() {
     sessionStorage.removeItem(SK.id);
     sessionStorage.removeItem(SK.topic);
     sessionStorage.removeItem(SK.diff);
+    sessionStorage.removeItem(SK.completed);
     window.history.replaceState(null, "", " ");
     setSessionId("");
     setTopic("");
@@ -529,8 +557,16 @@ export default function App() {
             {/* Brand */}
             <div className="site-header__brand">
               <h1 className="brand__title">
-                <span className="brand__title-ez" aria-label="Easy">EZ</span>
-                <span className="brand__title-rest">Study Lab</span>
+                <button
+                  type="button"
+                  className="brand__home-btn"
+                  onClick={resetSession}
+                  aria-label="EZ Study Lab — go to landing page"
+                  title="Go to landing page"
+                >
+                  <span className="brand__title-ez" aria-hidden="true">EZ</span>
+                  <span className="brand__title-rest">Study Lab</span>
+                </button>
               </h1>
             </div>
 
@@ -734,13 +770,16 @@ export default function App() {
                                 className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""} ${completedConcepts.has(c.concept_name) ? "is-completed" : ""}`}
                                 onClick={() => selectConceptFromRail(c.concept_name)}
                               >
-                                <span className="concept-rail__order">{c.order}</span>
+                                <span className="concept-rail__order" aria-hidden="true">
+                                  {completedConcepts.has(c.concept_name) ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  ) : (
+                                    c.order
+                                  )}
+                                </span>
                                 <span className="concept-rail__name">{c.concept_name}</span>
-                                {completedConcepts.has(c.concept_name) && (
-                                  <svg className="concept-rail__check" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-label="Completed">
-                                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
                               </button>
                             </li>
                           ))}
@@ -807,7 +846,14 @@ export default function App() {
                         completed={completedConcepts.has(selectedConcept)}
                         onContextChange={setTeachContext}
                         onTeach={runTeach}
-                        onMarkComplete={() => setCompletedConcepts((s) => new Set(s).add(selectedConcept))}
+                        onMarkComplete={() =>
+                          setCompletedConcepts((s) => {
+                            const next = new Set(s);
+                            if (next.has(selectedConcept)) next.delete(selectedConcept);
+                            else next.add(selectedConcept);
+                            return next;
+                          })
+                        }
                         onStartQuiz={() => {
                           if (selectedConcept) setQuizConcept(selectedConcept);
                           setQuizResult(null);
