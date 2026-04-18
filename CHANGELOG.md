@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed (April 2026)
-- **README.md rewritten** — direct, technical tone; removed marketing language and emojis; added dark SaaS-style architecture diagram with layered subgraphs
-- **ARCHITECTURE.md rewritten** — restructured as Overview, Components, Data Flow, Architecture Diagram, ReAct Loop, Design Decisions; added sequence diagram and layered Mermaid diagram
-- **CHANGELOG.md cleaned** — removed references to deleted components; documented recent cleanup
+### Added
+- **Mobile session navigation** (narrow viewports): hamburger control, backdrop scrim, slide-out drawer with workspace modes via `ModeSwitcher` (`variant="drawer"`), plus Source and New session; closes on Escape, scrim tap, mode change, Source modal open (`webui/src/App.jsx`, `webui/src/components/ModeSwitcher.jsx`, `webui/src/style.css`).
+
+### Changed
+- **README.md** — Architecture narrative and Mermaid chart: FastAPI updates state and invokes tools per request; `StudyBuddyAgent` shown as library/tests path; dashed link from `next-action` to `DecisionRules`; expanded API table (`/ping`, `/session/{id}/source`, `/session/{id}/source-file`, `/session/{id}/upload`); CI note (Python-only; build UI locally); project structure and test-file wording; clarified DecisionRules usage in “How it works.”
+- **ARCHITECTURE.md** — Overview documents **HTTP path** (handlers call tools/helpers directly) vs **`StudyBuddyAgent`** LCEL loop; sequence diagram matches real upload/plan/next-action flow; layer diagram aligned; ReAct section distinguishes browser-driven steps from `step()`/`run()`.
+- **CHANGELOG.md** — This file brought in sync with recent UI and doc corrections.
 
 ### Removed
 - `agent/agents/` directory — `adapter_agent.py`, `planner_agent.py`, `quizzer_agent.py`, `teacher_agent.py` (legacy agent classes superseded by tool-based architecture in `agent/tools/`)
@@ -59,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_topic_suggestion.py` — topic auto-suggestion regression tests
   - `test_quizzer_schema_validation.py` — quiz schema validation tests
   - `test_content_loader.py` — content loader tests
-  - Total: 19 test files under `scripts/`
+  - 22 `test_*.py` files under `scripts/`
 - **CI pipeline** (`.github/workflows/ci.yml`)
   - GitHub Actions: ruff lint, mypy type check, pytest
   - Uses `uv sync --extra web --group dev --locked` for dependencies and pinned tooling
@@ -68,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Topic suggestion temp-name bug — broadened `_TEMP_STEM_RE` regex to match all temp file patterns
-- mypy duplicate module discovery — added `webapi/__init__.py` package marker
+- mypy duplicate module discovery involving `webapi` — resolved via package/import layout (see `pyproject.toml` / repo roots)
 - mypy type errors on optional `UploadFile.filename` — normalized with `file.filename or "uploaded_file"`
 - Pytest `PytestReturnNotNoneWarning` in 8+ test files — replaced `return True/False` with `pytest.fail()`
 - Ruff E402 import-order errors after `pytest.importorskip()` guards — added `# noqa: E402`
