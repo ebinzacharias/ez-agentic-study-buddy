@@ -91,8 +91,6 @@ export default function App() {
 
   const [uploadResult, setUploadResult] = useState(null);
   const [planResult, setPlanResult] = useState(null);
-  const [maxConcepts, setMaxConcepts] = useState(0); // 0 = auto-infer from document
-  const [maxAllowed, setMaxAllowed] = useState(0);   // ceiling set by document complexity
 
   const [selectedConcept, setSelectedConcept] = useState("");
   const [teachContext, setTeachContext] = useState("");
@@ -103,11 +101,45 @@ export default function App() {
   const [quizResult, setQuizResult] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [evalResult, setEvalResult] = useState(null);
+  const [quizCurrentQuestionIndex, setQuizCurrentQuestionIndex] = useState(0);
+  /** Per-question immediate check result after "Check answer" (pre-submit): true/false */
+  const [quizCheckByQuestion, setQuizCheckByQuestion] = useState({});
+  const [completedConcepts, setCompletedConcepts] = useState(new Set());
 
   const [nextAction, setNextAction] = useState(null);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const resetErrors = () => setError(null);
+
+  useEffect(() => {
+    setQuizCurrentQuestionIndex(0);
+    setQuizCheckByQuestion({});
+  }, [quizResult]);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
+
+  useEffect(() => {
+    closeMobileNav();
+  }, [activeLearnTab, sessionId]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeMobileNav();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (sourceOpen) setMobileNavOpen(false);
+  }, [sourceOpen]);
 
   // ── Hash routing — sync URL with active tab ──────────────
   const TAB_TO_HASH = { plan: "#path", teach: "#learn", quiz: "#quiz" };
@@ -129,7 +161,7 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Session persistence — survive page refresh ───────────
-  const SK = { id: "ez_sid", topic: "ez_topic", diff: "ez_diff" };
+  const SK = { id: "ez_sid", topic: "ez_topic", diff: "ez_diff", completed: "ez_completed" };
 
   // On mount: attempt to restore session from sessionStorage
   useEffect(() => {
@@ -151,6 +183,20 @@ export default function App() {
         setTopic(data.topic || storedTopic || "");
         if (storedDiff) setDifficulty(storedDiff);
 
+        try {
+          const raw = sessionStorage.getItem(SK.completed);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.sid === storedId && Array.isArray(parsed.items)) {
+              setCompletedConcepts(new Set(parsed.items));
+            } else {
+              sessionStorage.removeItem(SK.completed);
+            }
+          }
+        } catch {
+          sessionStorage.removeItem(SK.completed);
+        }
+
         // Auto-regenerate learning path (plan is not stored client-side)
         const resolvedTopic = data.topic || storedTopic || "";
         const resolvedDiff = storedDiff || "beginner";
@@ -167,9 +213,6 @@ export default function App() {
           .then((planData) => {
               if (planData.concepts) {
               setPlanResult(planData);
-              if (planData.suggested_max_concepts) {
-                setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
-              }
               const first = planData.concepts?.[0]?.concept_name;
               if (first) setSelectedConcept(first);
             }
@@ -180,6 +223,19 @@ export default function App() {
         Object.values(SK).forEach((k) => sessionStorage.removeItem(k));
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist completed concepts per-session so refresh doesn't lose them
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      sessionStorage.setItem(
+        SK.completed,
+        JSON.stringify({ sid: sessionId, items: Array.from(completedConcepts) }),
+      );
+    } catch {
+      /* storage quota — non-critical */
+    }
+  }, [sessionId, completedConcepts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const failResponse = (data) => {
     if (isSessionExpired(data)) {
@@ -196,6 +252,7 @@ export default function App() {
     sessionStorage.removeItem(SK.id);
     sessionStorage.removeItem(SK.topic);
     sessionStorage.removeItem(SK.diff);
+    sessionStorage.removeItem(SK.completed);
     window.history.replaceState(null, "", " ");
     setSessionId("");
     setTopic("");
@@ -203,8 +260,6 @@ export default function App() {
     setFile(null);
     setUploadResult(null);
     setPlanResult(null);
-    setMaxConcepts(0);
-    setMaxAllowed(0);
     setTeachResult(null);
     setSelectedConcept("");
     setTeachContext("");
@@ -277,9 +332,6 @@ export default function App() {
         const planData = await planResp.json();
         if (planResp.ok) {
           setPlanResult(planData);
-          if (planData.suggested_max_concepts) {
-            setMaxAllowed((prev) => Math.max(prev, planData.suggested_max_concepts));
-          }
           const first = planData.concepts?.[0]?.concept_name;
           if (first) setSelectedConcept(first);
         }
@@ -294,15 +346,11 @@ export default function App() {
     }
   };
 
-  const runPlan = async (maxConceptsOverride) => {
+  const runPlan = async () => {
     if (!sessionId) {
       setError({ title: "Upload material first" });
       return;
     }
-    const maxConceptsToUse =
-      typeof maxConceptsOverride === "number" && !Number.isNaN(maxConceptsOverride)
-        ? maxConceptsOverride
-        : maxConcepts;
     setLoading(true);
     resetErrors();
     clearDownstream();
@@ -313,15 +361,12 @@ export default function App() {
         body: JSON.stringify({
           topic,
           difficulty_level: difficulty,
-          max_concepts: maxConceptsToUse,
+          max_concepts: 0,
         }),
       });
       const data = await resp.json();
       if (!resp.ok) failResponse(data);
       setPlanResult(data);
-      if (data.suggested_max_concepts) {
-        setMaxAllowed((prev) => Math.max(prev, data.suggested_max_concepts));
-      }
       const first = data.concepts?.[0]?.concept_name;
       if (first) setSelectedConcept(first);
     } catch (err) {
@@ -429,6 +474,15 @@ export default function App() {
       if (!resp.ok) failResponse(data);
       setEvalResult(data);
       setNextAction(data.next_action || null);
+      const da = data.difficulty_adaptation;
+      if (da?.adaptation_applied && da.new_difficulty) {
+        setDifficulty(da.new_difficulty);
+        try {
+          sessionStorage.setItem(SK.diff, da.new_difficulty);
+        } catch {
+          /* quota — non-critical */
+        }
+      }
     } catch (err) {
       if (err.sessionExpired) return;
       setError(err.userFacing ?? errorDisplayFromCaughtMessage(err.message));
@@ -490,46 +544,10 @@ export default function App() {
   const clearQuizProgress = () => {
     setQuizResult(null);
     setQuizAnswers({});
+    setQuizCheckByQuestion({});
     setEvalResult(null);
     resetErrors();
   };
-
-  let mobilePrimary = null;
-  if (sessionId && !loading) {
-    if (activeLearnTab === "plan") {
-      if (planResult?.concepts?.length) {
-        mobilePrimary = {
-          label: loading ? "Generating…" : "Go to Learn",
-          onClick: () => setActiveLearnTab("teach"),
-          disabled: loading,
-        };
-      } else {
-        mobilePrimary = {
-          label: loading ? "Generating…" : "Generate learning path",
-          onClick: () => runPlan(),
-          disabled: loading,
-        };
-      }
-    } else if (activeLearnTab === "teach") {
-      mobilePrimary = {
-        label: "Learn concept",
-        onClick: runTeach,
-        disabled: !selectedConcept.trim(),
-      };
-    } else if (!quizResult) {
-      mobilePrimary = {
-        label: "Generate quiz",
-        onClick: runQuiz,
-        disabled: !(quizConcept.trim() || selectedConcept.trim()),
-      };
-    } else {
-      mobilePrimary = {
-        label: "Submit and evaluate",
-        onClick: runEvaluate,
-        disabled: false,
-      };
-    }
-  }
 
   return (
     <div className="app-shell">
@@ -541,53 +559,155 @@ export default function App() {
         {/* ── Single unified nav bar ─────────────────────────── */}
         <header className="site-header">
           <div className="site-header__inner">
-
             {/* Brand */}
             <div className="site-header__brand">
               <h1 className="brand__title">
-                <span className="brand__title-ez" aria-label="Easy">EZ</span>
-                <span className="brand__title-rest">Study Lab</span>
+                <button
+                  type="button"
+                  className="brand__home-btn"
+                  onClick={() => {
+                    closeMobileNav();
+                    resetSession();
+                  }}
+                  aria-label="EZ Study Lab — go to landing page"
+                  title="Go to landing page"
+                >
+                  <span className="brand__title-ez" aria-hidden="true">EZ</span>
+                  <span className="brand__title-rest">Study Lab</span>
+                </button>
               </h1>
             </div>
 
-            {/* Mode tabs — inline, only when session active */}
+            {/* Desktop: mode tabs + session actions */}
             {sessionId ? (
-              <ModeSwitcher
-                activeMode={activeLearnTab}
-                onChange={handleModeChange}
-              />
-            ) : null}
-
-            {/* Session actions */}
-            {sessionId ? (
-              <div className="site-header__actions">
-                <button
-                  type="button"
-                  className="session-btn session-btn--ghost"
-                  onClick={() => setSourceOpen(true)}
-                  disabled={loading}
-                >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                    <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Source
-                </button>
-                <button
-                  type="button"
-                  className="session-btn session-btn--reset"
-                  onClick={resetSession}
-                  disabled={loading}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                  New session
-                </button>
+              <div className="site-header__session-desktop">
+                <ModeSwitcher
+                  activeMode={activeLearnTab}
+                  onChange={handleModeChange}
+                />
+                <div className="site-header__actions">
+                  <button
+                    type="button"
+                    className="session-btn session-btn--ghost"
+                    onClick={() => setSourceOpen(true)}
+                    disabled={loading}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Source
+                  </button>
+                  <button
+                    type="button"
+                    className="session-btn session-btn--reset"
+                    onClick={() => {
+                      closeMobileNav();
+                      resetSession();
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                    New session
+                  </button>
+                </div>
               </div>
             ) : null}
 
+            {/* Mobile: menu toggle */}
+            {sessionId ? (
+              <button
+                type="button"
+                className="site-header__menu-toggle site-header__ui"
+                aria-expanded={mobileNavOpen}
+                aria-controls="mobile-session-nav"
+                aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+                onClick={() => setMobileNavOpen((o) => !o)}
+              >
+                <span className="site-header__menu-bars" aria-hidden="true">
+                  <span className="site-header__menu-bar" />
+                  <span className="site-header__menu-bar" />
+                  <span className="site-header__menu-bar" />
+                </span>
+              </button>
+            ) : null}
           </div>
+
+          {/* Mobile drawer + scrim */}
+          {sessionId && mobileNavOpen ? (
+            <>
+              <button
+                type="button"
+                className="site-header__scrim site-header__ui"
+                aria-label="Close menu"
+                tabIndex={-1}
+                onClick={closeMobileNav}
+              />
+              <div
+                id="mobile-session-nav"
+                className="site-header__drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Session menu"
+              >
+                <div className="site-header__drawer-head">
+                  <span className="site-header__drawer-title">Workspace</span>
+                  <button
+                    type="button"
+                    className="site-header__drawer-close site-header__ui"
+                    aria-label="Close menu"
+                    onClick={closeMobileNav}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+                <ModeSwitcher
+                  variant="drawer"
+                  idPrefix="-mnav"
+                  activeMode={activeLearnTab}
+                  onChange={(mode) => {
+                    closeMobileNav();
+                    handleModeChange(mode);
+                  }}
+                />
+                <div className="site-header__drawer-actions">
+                  <button
+                    type="button"
+                    className="site-header__drawer-action site-header__ui"
+                    onClick={() => {
+                      closeMobileNav();
+                      setSourceOpen(true);
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Source material
+                  </button>
+                  <button
+                    type="button"
+                    className="site-header__drawer-action site-header__drawer-action--danger site-header__ui"
+                    onClick={() => {
+                      closeMobileNav();
+                      resetSession();
+                    }}
+                    disabled={loading}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                    New session
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </header>
 
 
@@ -734,8 +854,15 @@ export default function App() {
                     <QuizProgressTracker
                       quizResult={quizResult}
                       quizAnswers={quizAnswers}
+                      quizCheckByQuestion={quizCheckByQuestion}
                       evalResult={evalResult}
-                      numQuestions={numQuestions}
+                      currentQuestionIndex={quizCurrentQuestionIndex}
+                      onSelectQuestion={(idx) => {
+                        setQuizCurrentQuestionIndex(idx);
+                        document
+                          .getElementById("panel-quiz")
+                          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }}
                     />
                   ) : (
                     /* Learn tab — concept-rail as jump nav while studying */
@@ -747,10 +874,18 @@ export default function App() {
                             <li key={`${c.order}-${c.concept_name}`}>
                               <button
                                 type="button"
-                                className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""}`}
+                                className={`concept-rail__btn ${selectedConcept === c.concept_name ? "is-active" : ""} ${completedConcepts.has(c.concept_name) ? "is-completed" : ""}`}
                                 onClick={() => selectConceptFromRail(c.concept_name)}
                               >
-                                <span className="concept-rail__order">{c.order}</span>
+                                <span className="concept-rail__order" aria-hidden="true">
+                                  {completedConcepts.has(c.concept_name) ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  ) : (
+                                    c.order
+                                  )}
+                                </span>
                                 <span className="concept-rail__name">{c.concept_name}</span>
                               </button>
                             </li>
@@ -793,15 +928,10 @@ export default function App() {
                   >
                     {activeLearnTab === "plan" ? (
                       <PlanStep
-                        maxConcepts={maxConcepts}
-                        maxAllowed={maxAllowed}
-                        difficulty={difficulty}
                         planResult={planResult}
                         loading={loading}
                         disabled={!sessionId}
-                        onMaxConceptsChange={setMaxConcepts}
-                        onDifficultyChange={setDifficulty}
-                        onPlan={runPlan}
+                        completedConcepts={completedConcepts}
                         onPickConcept={selectConceptFromRail}
                       />
                     ) : null}
@@ -820,11 +950,22 @@ export default function App() {
                         teachContext={teachContext}
                         teachResult={teachResult}
                         loading={loading}
+                        completed={completedConcepts.has(selectedConcept)}
                         onContextChange={setTeachContext}
                         onTeach={runTeach}
+                        onMarkComplete={() =>
+                          setCompletedConcepts((s) => {
+                            const next = new Set(s);
+                            if (next.has(selectedConcept)) next.delete(selectedConcept);
+                            else next.add(selectedConcept);
+                            return next;
+                          })
+                        }
                         onStartQuiz={() => {
                           if (selectedConcept) setQuizConcept(selectedConcept);
                           setQuizResult(null);
+                          setQuizAnswers({});
+                          setQuizCheckByQuestion({});
                           setEvalResult(null);
                           setActiveLearnTab("quiz");
                         }}
@@ -845,6 +986,7 @@ export default function App() {
                         quizConcept={quizConcept}
                         selectedConcept={selectedConcept}
                         numQuestions={numQuestions}
+                        difficulty={difficulty}
                         quizResult={quizResult}
                         quizAnswers={quizAnswers}
                         evalResult={evalResult}
@@ -852,12 +994,17 @@ export default function App() {
                         loading={loading}
                         onQuizConceptChange={setQuizConcept}
                         onNumQuestionsChange={setNumQuestions}
+                        onDifficultyChange={setDifficulty}
                         onAnswerChange={(qNum, opt) =>
                           setQuizAnswers((a) => ({ ...a, [qNum]: opt }))
                         }
                         onGenerateQuiz={runQuiz}
                         onEvaluate={runEvaluate}
                         onStartNewQuiz={clearQuizProgress}
+                        currentQuestionIndex={quizCurrentQuestionIndex}
+                        onCurrentQuestionIndexChange={setQuizCurrentQuestionIndex}
+                        quizCheckByQuestion={quizCheckByQuestion}
+                        onQuizCheckByQuestionChange={setQuizCheckByQuestion}
                       />
                     ) : null}
                   </div>
@@ -867,19 +1014,6 @@ export default function App() {
           ) : null}
         </div>
       </main>
-
-      {sessionId && mobilePrimary ? (
-        <div className="mobile-sticky-actions" role="region" aria-label="Primary action">
-          <button
-            type="button"
-            className="mobile-sticky-actions__btn"
-            onClick={() => mobilePrimary.onClick()}
-            disabled={mobilePrimary.disabled}
-          >
-            {loading ? "Working…" : mobilePrimary.label}
-          </button>
-        </div>
-      ) : null}
 
       <footer className="site-footer">
         <p className="site-footer__primary">
