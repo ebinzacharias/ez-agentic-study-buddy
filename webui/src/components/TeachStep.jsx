@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 export default function TeachStep({
@@ -9,6 +9,29 @@ export default function TeachStep({
   onStartQuiz,
   onMarkComplete,
 }) {
+  const [lessonMaximized, setLessonMaximized] = useState(false);
+
+  useEffect(() => {
+    setLessonMaximized(false);
+  }, [selectedConcept, teachResult?.concept_name]);
+
+  useEffect(() => {
+    if (!lessonMaximized) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [lessonMaximized]);
+
+  useEffect(() => {
+    if (!lessonMaximized) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setLessonMaximized(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lessonMaximized]);
 
   if (!selectedConcept) {
     return (
@@ -36,8 +59,46 @@ export default function TeachStep({
           <p className="learn-loading__label">Loading lesson for <strong>{selectedConcept}</strong>…</p>
         </div>
       ) : teachResult ? (
-        <div className="result result--teach learn-environment__notes-card">
-          <h2 className="result__title">{teachResult.concept_name}</h2>
+        <div
+          className={`result result--teach learn-environment__notes-card${lessonMaximized ? " learn-environment__notes-card--maximized" : ""}`}
+        >
+          <div className="lesson-card__header">
+            <h2 className="result__title">{teachResult.concept_name}</h2>
+            <button
+              type="button"
+              className="lesson-card__max-btn"
+              onClick={() => setLessonMaximized((v) => !v)}
+              aria-pressed={lessonMaximized}
+              aria-label={
+                lessonMaximized
+                  ? "Exit expanded lesson view"
+                  : "Expand lesson to use full screen"
+              }
+              title={lessonMaximized ? "Exit expanded view (Esc)" : "Expand lesson"}
+            >
+              {lessonMaximized ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 8V4h4M20 16v4h-4M16 4h4v4M8 20H4v-4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
           <article className="teach-explanation" aria-label="Lesson explanation">
             <ReactMarkdown
               components={{
