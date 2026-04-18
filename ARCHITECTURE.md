@@ -2,9 +2,14 @@
 
 ## Overview
 
-The system has three layers: a web interface, an agent core, and a set of tools. The web layer handles file uploads and session management. The agent core runs a ReAct loop that observes session state, decides the next action using rule-based logic, and executes it through one of five tools. Each tool updates session state after execution.
+The system has three layers: a web interface, an agent core, and a set of tools. The web layer handles file uploads and session management.
 
-All decision-making about _what to do next_ uses explicit rules (DecisionRules), not LLM inference. The LLM is only used for content generation within tools (planning, teaching, quiz generation).
+**Two ways to run the same building blocks:**
+
+1. **HTTP path (default product):** FastAPI handlers update `StudySessionState` and call tools or teacher/quiz helpers **directly** per endpoint (for example `plan_learning_path.invoke(...)`, `teach_concept_payload`, quiz generation, evaluation). The UI advances the workflow one REST call at a time.
+2. **Library path:** `StudyBuddyAgent` runs a **ReAct-style** LCEL loop (**observe → decide → act**) each `step()`, using **DecisionRules** and **ToolExecutor** over the same tools and state. This is used for **programmatic runs and tests**, not as the internal driver for every browser action.
+
+All decision-making about _what to do next_ (for **DecisionRules** and `/next-action`) uses explicit rules, not LLM inference. The LLM is used for **content generation** inside planner, teacher, and quizzer paths (and related invocations).
 
 ## Components
 
@@ -14,7 +19,8 @@ All decision-making about _what to do next_ uses explicit rules (DecisionRules),
 - In-memory session management keyed by UUID.
 - File upload parsing via Content Loader.
 - Topic auto-suggestion from uploaded content.
-- Next-action recommendation after each step.
+- Endpoints invoke tools or structured helpers **directly**; they do **not** call `StudyBuddyAgent` per request.
+- Next-action recommendation via **DecisionRules** on current state (`GET /session/{id}/next-action`).
 - Error classification for user-facing messages.
 
 **Content Loader** (`agent/utils/content_loader.py`)
@@ -31,9 +37,10 @@ All decision-making about _what to do next_ uses explicit rules (DecisionRules),
 ### Agent Core
 
 **StudyBuddyAgent** (`agent/core/agent.py`)
-- Runs the ReAct loop using LCEL chains (observe, decide, act).
-- Coordinates between LLM, state, decision rules, and tools.
+- Runs the ReAct loop using LCEL chains (observe, decide, act) for **`step()` / `run()`** in Python.
+- Coordinates LLM, state, decision rules, and tools via **ToolExecutor**.
 - Enforces iteration limits. Tracks session history.
+- **Not** wired as the default executor inside FastAPI route handlers (see Overview).
 
 **StudySessionState** (`agent/core/state.py`)
 - Pydantic model tracking session metadata, concepts, and progress.
@@ -85,40 +92,42 @@ All tools live in `agent/tools/`. Each accepts structured input and returns stru
 
 ## Data Flow
 
+### Typical web request path
+
 ```mermaid
 sequenceDiagram
     participant UI as React UI
     participant API as FastAPI
     participant CL as Content Loader
-    participant Agent as StudyBuddyAgent
-    participant State as SessionState
+    participant State as StudySessionState
     participant Rules as DecisionRules
-    participant Tools as Tools
+    participant Tools as LangChain tools
     participant LLM as LLM
 
     UI->>API: POST /session/from-upload (file)
-    API->>CL: Parse file
+    API->>CL: load_content
     CL-->>API: LoadedContent
-    API->>State: Create session
+    API->>State: Create session, set topic
     API-->>UI: session_id, topic
 
     UI->>API: POST /session/{id}/plan
-    API->>Agent: Start ReAct loop
+    API->>Tools: plan_learning_path.invoke(...)
+    Tools->>LLM: Generate learning path
+    LLM-->>Tools: Structured concepts
+    Tools-->>API: concept list
+    API->>State: concepts_planned / topic
+    API-->>UI: JSON response
 
-    loop Observe - Decide - Act
-        Agent->>State: Read current state
-        Agent->>Rules: Decide next action
-        Rules-->>Agent: action, tool_name, tool_args
-        Agent->>Tools: Execute tool
-        Tools->>LLM: Generate content
-        LLM-->>Tools: Response
-        Tools->>State: Update progress
-        Tools-->>Agent: Result
-    end
-
-    Agent-->>API: Final state
-    API-->>UI: Result + next action
+    UI->>API: GET /session/{id}/next-action
+    API->>State: Read state
+    API->>Rules: decide_next_action()
+    Rules-->>API: action, args, reason
+    API-->>UI: Recommendation
 ```
+
+### Library agent loop (`StudyBuddyAgent`)
+
+For **`agent.run()`** or repeated **`agent.step()`**, the same **DecisionRules** and **ToolExecutor** run an **observe → decide → act** LCEL chain each iteration (see `agent/chains/decision_chain.py`). The LLM is invoked from tools as needed inside the **Act** phase.
 
 ## Architecture Diagram
 
@@ -139,11 +148,11 @@ flowchart TD
 
     subgraph AgentLayer[Agent Layer]
         direction TB
-        SA[StudyBuddyAgent]
+        SA[StudyBuddyAgent<br/>library / tests]
         TE[ToolExecutor]
         DR[DecisionRules]
         RM[RetryManager]
-        SM[SessionState]
+        SM[StudySessionState]
     end
 
     subgraph ToolLayer[Tool Layer]
@@ -162,7 +171,9 @@ flowchart TD
 
     Browser ==> API
     API --> CL
-    API ==> SA
+    API --> SM
+    API --> ToolLayer
+    API -.->|/next-action| DR
     SA --> DR
     SA --> SM
     DR --> SM
@@ -178,13 +189,15 @@ flowchart TD
 
 ## ReAct Loop
 
-The agent runs a loop with three phases per iteration:
+**In `StudyBuddyAgent`**, each `step()` runs three phases:
 
 1. **Observe** - Read current session state (concepts planned, taught, quizzed, scores).
 2. **Decide** - DecisionRules analyzes state and returns the next action using explicit logic.
 3. **Act** - ToolExecutor runs the selected tool and updates state.
 
 The loop continues until all concepts are mastered or the iteration limit is reached.
+
+In the **web app**, the **user and UI** advance the workflow; each **POST** performs one slice of this flow (plan, teach, quiz, evaluate) without entering `StudyBuddyAgent` unless you call it from Python yourself.
 
 ```mermaid
 flowchart LR
