@@ -10,7 +10,7 @@ pythonpath = ["."]
 
 [project]
 name = "ez-agentic-study-buddy"
-version = "0.1.1"
+version = "0.1.0"
 description = "A single-agent AI tutor with autonomous learning path planning and adaptive teaching."
 readme = "README.md"
 license = { text = "MIT" }

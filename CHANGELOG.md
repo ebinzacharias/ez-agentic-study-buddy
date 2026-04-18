@@ -7,14 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-18
+
+First public **product sketch** release: upload-first web UI, FastAPI session API, LangChain tools, and docs aligned with the HTTP vs library agent paths.
+
 ### Added
 - **Mobile session navigation** (narrow viewports): hamburger control, backdrop scrim, slide-out drawer with workspace modes via `ModeSwitcher` (`variant="drawer"`), plus Source and New session; closes on Escape, scrim tap, mode change, Source modal open (`webui/src/App.jsx`, `webui/src/components/ModeSwitcher.jsx`, `webui/src/style.css`).
 - **Quiz-driven difficulty adaptation (web):** after `POST /session/{id}/evaluate`, the rule-based `adapt_difficulty` tool runs on the quiz score and retry count; when the level changes, the response includes `difficulty_adaptation` (`reason`, old/new level) and the Quiz results UI shows an explicit banner; client syncs Tune difficulty + `sessionStorage` (`webapi/main.py`, `webui/src/App.jsx`, `webui/src/components/QuizStep.jsx`, `webui/src/style.css`).
+- **Agentic Skills** (`.github/copilot-agents/`)
+  - `UI-STYLE-GUARDIAN/` — design system enforcement (SKILL.md, design-tokens.json v2.0.0, components-reference.md)
+  - `REPO-AUDITOR/` — codebase audit and cleanup (SKILL.md, audit-checklist.md)
 
 ### Changed
 - **README.md** — Architecture narrative and Mermaid chart: FastAPI updates state and invokes tools per request; `StudyBuddyAgent` shown as library/tests path; dashed link from `next-action` to `DecisionRules`; expanded API table (`/ping`, `/session/{id}/source`, `/session/{id}/source-file`, `/session/{id}/upload`); CI note (Python-only; build UI locally); project structure and test-file wording; clarified DecisionRules usage in “How it works.”
 - **ARCHITECTURE.md** — Overview documents **HTTP path** (handlers call tools/helpers directly) vs **`StudyBuddyAgent`** LCEL loop; sequence diagram matches real upload/plan/next-action flow; layer diagram aligned; ReAct section distinguishes browser-driven steps from `step()`/`run()`.
-- **CHANGELOG.md** — This file brought in sync with recent UI and doc corrections.
+- **CHANGELOG.md** — Release notes consolidated for `v0.1.0`; `pyproject.toml` version set to **0.1.0** to match this tag and `webui/package.json`.
 
 ### Removed
 - `agent/agents/` directory — `adapter_agent.py`, `planner_agent.py`, `quizzer_agent.py`, `teacher_agent.py` (legacy agent classes superseded by tool-based architecture in `agent/tools/`)
@@ -22,11 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `webui/src/components/LandingHero.jsx` — not imported in App.jsx
 - `webui/src/components/NextActionBanner.jsx` — not imported in App.jsx
 - `DESIGN_SYSTEM.md` — redundant with `.github/copilot-agents/UI-STYLE-GUARDIAN/` files
-
-### Added
-- **Agentic Skills** (`.github/copilot-agents/`)
-  - `UI-STYLE-GUARDIAN/` — design system enforcement (SKILL.md, design-tokens.json v2.0.0, components-reference.md)
-  - `REPO-AUDITOR/` — codebase audit and cleanup (SKILL.md, audit-checklist.md)
 
 ---
 
@@ -182,13 +184,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.env.example` template
   - `ARCHITECTURE.md` with comprehensive diagrams
   - `CHANGELOG.md` for version tracking
-
-## [0.1.0] - 2026-01-XX
-
-### Added
-- Initial project setup
-- Basic project structure
-- Repository initialization
 
 [Unreleased]: https://github.com/ebinzacharias/ez-agentic-study-buddy/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ebinzacharias/ez-agentic-study-buddy/releases/tag/v0.1.0
