@@ -31,7 +31,7 @@ Built to demonstrate practical agentic AI patterns: ReAct loops, rule-based deci
 | LLM | Groq (default) or OpenAI |
 | Frontend | React, Vite |
 | Package Manager | uv |
-| CI | GitHub Actions (ruff, mypy, pytest) |
+| CI | GitHub Actions (ruff, mypy, pytest; Python only — run `npm run build` locally for the UI) |
 
 ## How It Works
 
@@ -42,9 +42,11 @@ Built to demonstrate practical agentic AI patterns: ReAct loops, rule-based deci
 5. Quizzer tool generates multiple-choice questions for the concept.
 6. Evaluator tool scores answers using explicit keyword matching.
 7. Adapter tool adjusts difficulty based on quiz performance and retry count.
-8. DecisionRules determines the next step. The loop repeats until all concepts are mastered.
+8. DecisionRules determines the next step (notably for `/next-action` and the library agent loop). The user-driven loop continues until concepts are mastered.
 
 ## Architecture
+
+The **web app** drives work through **FastAPI**: each request updates `StudySessionState` and invokes the relevant **tools** (or helpers like `teach_concept_payload`) directly. **`StudyBuddyAgent`** packages the same state, **DecisionRules**, and **ToolExecutor** into a **ReAct-style LCEL loop** for **library / programmatic** use and tests (it is not invoked on every HTTP call).
 
 ```mermaid
 flowchart TD
@@ -59,10 +61,10 @@ flowchart TD
 
     subgraph Agent[Agent Core]
         direction TB
-        SA[StudyBuddyAgent]
+        SA[StudyBuddyAgent<br/>library + tests]
         TE[ToolExecutor]
         DR[DecisionRules]
-        SM[SessionState]
+        SM[StudySessionState]
         RM[RetryManager]
     end
 
@@ -79,7 +81,9 @@ flowchart TD
 
     UI ==> API
     API --> CL
-    API ==> SA
+    API --> SM
+    API --> Tools
+    API -.->|next-action| DR
     SA --> DR
     SA --> SM
     DR --> SM
@@ -109,7 +113,7 @@ webui/
   src/        React frontend (Vite)
     components/   UploadStep, PlanStep, TeachStep, QuizStep, ModeSwitcher,
                   SessionControls, QuizProgressTracker, MaterialPreview, SourcePreviewModal
-scripts/      19 pytest test files
+scripts/      pytest tests (20+ files under scripts/)
 LEARNINGS/    Implementation notes and agentic AI concepts
 ```
 
@@ -126,6 +130,10 @@ LEARNINGS/    Implementation notes and agentic AI concepts
 | `POST` | `/session/{id}/quiz` | Generate a quiz |
 | `POST` | `/session/{id}/evaluate` | Evaluate quiz answers |
 | `GET`  | `/session/{id}/next-action` | Get recommended next step |
+| `GET`  | `/ping` | Liveness probe |
+| `GET`  | `/session/{id}/source` | Source material metadata (e.g. PDF preview) |
+| `GET`  | `/session/{id}/source-file` | Original uploaded file bytes (PDF preview) |
+| `POST` | `/session/{id}/upload` | Add or replace material for an existing session |
 
 ## Getting Started
 
